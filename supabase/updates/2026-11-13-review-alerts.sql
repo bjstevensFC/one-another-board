@@ -20,7 +20,7 @@ create or replace function public.notify_moderators(p_subject text, p_heading te
 returns void language plpgsql security definer set search_path = public, extensions as $$
 declare
   api_key text;
-  board_url constant text := 'https://oneanother.follow-church.com/';
+  board_url constant text := 'https://oneanother.follow-church.com/#review';
   html text;
   m record;
 begin

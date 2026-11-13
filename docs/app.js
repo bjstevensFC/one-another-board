@@ -195,6 +195,28 @@
     if (["all", "prayer", "need", "skill"].includes(saved.tab)) S.tab = saved.tab;
     S.showClosed = !!saved.showClosed;
   } catch (e) {}
+  // Links from review alert emails end in #review. Remember that through a sign-in, too,
+  // since the email sign-in link brings people back without it.
+  let reviewIntent = location.hash === "#review";
+  try { if (localStorage.getItem("oab-after-signin") === "review") reviewIntent = true; } catch (e) {}
+  let reviewSignInShown = false;
+  function applyReviewIntent(me) {
+    if (!reviewIntent) return;
+    if (me.signedIn) {
+      if (me.isModerator) S.tab = "review";
+      reviewIntent = false;
+      try { localStorage.removeItem("oab-after-signin"); } catch (e) {}
+    } else if (!reviewSignInShown) {
+      reviewSignInShown = true;
+      try { localStorage.setItem("oab-after-signin", "review"); } catch (e) {}
+      openPanel("signInPanel");
+      $("#signInMsg").textContent = "Sign in to see the posts waiting for review.";
+    }
+  }
+  window.addEventListener("hashchange", () => {
+    if (location.hash === "#review") { reviewIntent = true; applyReviewIntent(S.me); render(); }
+  });
+
   const saveView = () => { try { localStorage.setItem("oab-view", JSON.stringify({ tab: ["mine", "review"].includes(S.tab) ? "all" : S.tab, showClosed: S.showClosed })); } catch (e) {} };
 
   $("#f-trade").append(h("option", { value: "", text: "Choose a trade" }), ...TRADES.map((t) => h("option", { value: t, text: t })));
@@ -207,6 +229,7 @@
       const [me, rows] = await Promise.all([api.me(), api.list()]);
       S.me = me; S.rows = rows; S.loaded = true;
       if (!["all", "prayer", "need", "skill"].includes(S.tab) && !(S.tab === "mine" && me.signedIn) && !(S.tab === "review" && me.isModerator)) S.tab = "all";
+      applyReviewIntent(me);
       showError("");
     } catch (e) {
       showError(friendly(e));
