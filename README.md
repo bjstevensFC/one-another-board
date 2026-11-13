@@ -8,6 +8,9 @@ A public community bulletin board for prayer requests, needs, and trades for hir
 - Posts **expire after 60 days**. Authors can renew them, mark them answered or met, or remove them.
 - Prayer requests can hide the poster's name from other readers. Moderators can still see it.
 
+**Live at:** https://oneanother.follow-church.com (short link: follow-church.com/oneanother).
+Hosted on GitHub Pages from the `docs` folder. `docs/CNAME` holds the custom address, so keep that file.
+
 ## What's in this folder
 
 | Path | What it is |
