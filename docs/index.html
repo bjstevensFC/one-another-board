@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>“One Another” Board</title>
+  <meta name="description" content="A community bulletin board for prayer requests, needs, and trades for hire.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="inner">
+    <div class="brand">
+      <span class="church" id="churchName"></span>
+      <h1 id="boardName">“One Another” Board</h1>
+      <p id="tagline"></p>
+      <div class="tally" id="tally">Loading the board…</div>
+    </div>
+    <div class="account" id="account"></div>
+  </div>
+</header>
+
+<div class="inner content">
+  <div class="notice" id="demoNotice" hidden>
+    <strong>Demo mode.</strong> These are sample posts so you can try the board. Nothing is saved, and the posts reset when you reload. Add your Supabase settings in <code>config.js</code> to go live.
+  </div>
+  <div class="notice error" id="errorNotice" hidden role="alert"></div>
+
+  <!-- Sign in -->
+  <section class="panel" id="signInPanel" hidden aria-labelledby="signInTitle">
+    <h2 id="signInTitle">Sign in to post</h2>
+    <p class="muted">Enter your email and we’ll send you a sign-in link. You don’t need a password.</p>
+    <form id="signInForm" class="inline-form" novalidate>
+      <label class="sr-only" for="signInEmail">Email</label>
+      <input id="signInEmail" type="email" autocomplete="email" placeholder="you@example.com" required>
+      <button class="btn primary" type="submit" id="signInBtn">Email me a link</button>
+      <button class="btn quiet" type="button" data-close="signInPanel">Cancel</button>
+    </form>
+    <p class="form-msg" id="signInMsg" role="status"></p>
+  </section>
+
+  <!-- First-time name -->
+  <section class="panel" id="namePanel" hidden aria-labelledby="nameTitle">
+    <h2 id="nameTitle">What should we call you?</h2>
+    <p class="muted">This name appears on your posts. You can hide it on prayer requests.</p>
+    <form id="nameForm" class="inline-form" novalidate>
+      <label class="sr-only" for="nameInput">Your name</label>
+      <input id="nameInput" maxlength="60" autocomplete="name" placeholder="e.g. Maria R.">
+      <button class="btn primary" type="submit">Save name</button>
+    </form>
+    <p class="form-msg" id="nameMsg" role="alert"></p>
+  </section>
+
+  <!-- Composer -->
+  <section class="panel" id="composer" hidden aria-labelledby="composeTitle">
+    <h2 id="composeTitle">What would you like to post?</h2>
+    <div class="kinds" role="group" aria-label="Post type">
+      <button type="button" class="kind-opt" data-kind="prayer" aria-pressed="true"><b>Prayer request</b><span>Ask others to pray with you</span></button>
+      <button type="button" class="kind-opt" data-kind="need" aria-pressed="false"><b>A need</b><span>Meals, rides, repairs, a helping hand</span></button>
+      <button type="button" class="kind-opt" data-kind="skill" aria-pressed="false"><b>Trade for hire</b><span>Offer skilled work to the community</span></button>
+    </div>
+    <form id="postForm" novalidate>
+      <div class="stack">
+        <div class="field">
+          <label for="f-title" id="l-title">Title</label>
+          <input id="f-title" maxlength="90" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-body" id="l-body">Details</label>
+          <textarea id="f-body" maxlength="1200"></textarea>
+          <span class="hint">Share only what you’re comfortable with anyone reading. Please ask before sharing someone else’s situation.</span>
+        </div>
+        <div class="grid2">
+          <div class="field" data-for="skill">
+            <label for="f-trade">Trade</label>
+            <select id="f-trade"></select>
+          </div>
+          <div class="field" data-for="need">
+            <label for="f-category">Kind of help</label>
+            <select id="f-category"></select>
+          </div>
+          <div class="field" data-for="need skill">
+            <label for="f-area">Area or neighborhood</label>
+            <input id="f-area" maxlength="60" placeholder="e.g. Northside, within 20 miles">
+          </div>
+          <div class="field" data-for="skill">
+            <label for="f-rate">Rates <span class="hint">(optional)</span></label>
+            <input id="f-rate" maxlength="60" placeholder="e.g. $45/hr, free estimates">
+          </div>
+          <div class="field" data-for="need skill">
+            <label for="f-contact" id="l-contact">How to reach you</label>
+            <input id="f-contact" maxlength="80" placeholder="Phone or email">
+            <span class="hint">Only people who are signed in can see this.</span>
+          </div>
+        </div>
+        <label class="check" data-for="prayer"><input type="checkbox" id="f-hide"> Show my name as “A member of our community”</label>
+        <p class="hint">A moderator reviews each post before it appears on the board. Posts stay up for 60 days, and you can renew them.</p>
+        <div class="form-actions">
+          <span class="form-msg" id="postMsg" role="alert"></span>
+          <div class="btn-row">
+            <button type="button" class="btn quiet" data-close="composer">Cancel</button>
+            <button type="submit" class="btn primary" id="submitBtn">Post</button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <div class="toolbar">
+    <div class="tabs" role="group" aria-label="Filter posts" id="tabs">
+      <button type="button" class="tab" data-tab="all" aria-pressed="true">Everything <span class="n" data-n="all"></span></button>
+      <button type="button" class="tab" data-tab="prayer" aria-pressed="false">Prayer requests <span class="n" data-n="prayer"></span></button>
+      <button type="button" class="tab" data-tab="need" aria-pressed="false">Needs <span class="n" data-n="need"></span></button>
+      <button type="button" class="tab" data-tab="skill" aria-pressed="false">Trades for hire <span class="n" data-n="skill"></span></button>
+      <button type="button" class="tab" data-tab="mine" aria-pressed="false" hidden>My posts <span class="n" data-n="mine"></span></button>
+      <button type="button" class="tab review" data-tab="review" aria-pressed="false" hidden>Review <span class="n" data-n="review"></span></button>
+    </div>
+    <div class="filters">
+      <select class="field-inline" id="tradeFilter" aria-label="Filter by trade" hidden></select>
+      <input class="field-inline" id="search" type="search" placeholder="Search posts" aria-label="Search posts">
+      <label class="check"><input type="checkbox" id="showClosed"> Show answered &amp; closed</label>
+    </div>
+  </div>
+
+  <main class="board" id="board" aria-live="polite"></main>
+
+  <details class="guide">
+    <summary>How this board works</summary>
+    <ul>
+      <li>Anyone can read the board. Sign in with your email to post, pray along, or see contact details.</li>
+      <li>A moderator reviews every post before it appears. If something looks wrong, use “Report” on the post.</li>
+      <li>Please ask before sharing someone else’s prayer request or personal situation.</li>
+      <li>Tradespeople list themselves. The church does not vet, license or guarantee their work, so ask for references and get estimates in writing.</li>
+      <li>When a prayer is answered or a need is met, mark it so others can rejoice with you.</li>
+    </ul>
+  </details>
+</div>
+
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

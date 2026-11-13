@@ -1,0 +1,5 @@
+.DS_Store
+.env
+# The claude.ai version of the board (not part of the website)
+open-hands-board.html
+.claude/
