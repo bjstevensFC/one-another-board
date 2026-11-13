@@ -8,6 +8,8 @@ A public community bulletin board for prayer requests, needs, and trades for hir
 - Posts **expire after 60 days**. Authors can renew them, mark them answered or met, or remove them.
 - Prayer requests can hide the poster's name from other readers. Moderators can still see it.
 
+- **Moderators get an email** when a new post is waiting for review or a post is reported (see `supabase/updates/2026-11-13-review-alerts.sql`; it needs a Resend key saved in Supabase's Vault as `resend_alerts_key`).
+
 **Live at:** https://oneanother.follow-church.com (short link: follow-church.com/oneanother).
 Hosted on GitHub Pages from the `docs` folder. `docs/CNAME` holds the custom address, so keep that file.
 
