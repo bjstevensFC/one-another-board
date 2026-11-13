@@ -202,6 +202,18 @@ input.field-inline { width: min(240px, 100%); }
 .card .body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .facts { display: flex; flex-wrap: wrap; gap: 6px; }
 .fact { font-size: 13px; border-radius: 6px; padding: 2px 8px; background: color-mix(in srgb, var(--k) 10%, transparent); }
+.site-link {
+  justify-self: start; display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+  font-size: 14px; font-weight: 700; color: var(--link); text-decoration: none; overflow-wrap: anywhere;
+}
+.site-link::before { /* small globe mark */
+  content: ""; flex: none; width: 14px; height: 14px; border-radius: 50%;
+  border: 1.5px solid currentColor;
+  background: linear-gradient(currentColor, currentColor) center / 1.5px 100% no-repeat,
+              linear-gradient(currentColor, currentColor) center / 100% 1.5px no-repeat;
+}
+.site-link::after { content: "↗"; font-weight: 400; }
+.site-link:hover { text-decoration: underline; }
 .byline { font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
 .tear {
   border-top: 1.5px dashed var(--line-strong); padding: 10px 18px 12px;

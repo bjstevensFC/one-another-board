@@ -39,6 +39,25 @@
     for (let i = 1; i < steps.length; i++) if (Math.abs(s) < steps[i][0]) return rtf.format(Math.round(s / steps[i - 1][0]), steps[i][1]);
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   }
+  // Accepts "ruizelectric.com", "www.ruizelectric.com" or a full https:// address.
+  // Returns a clean https:// (or http://) URL, or null if it isn't a real web address.
+  function normalizeWebsite(input) {
+    let s = String(input || "").trim();
+    if (!s) return null;
+    if (!/^https?:\/\//i.test(s)) s = "https://" + s;
+    try {
+      const u = new URL(s);
+      if (!/^https?:$/.test(u.protocol) || !/\.[a-z]{2,}$/i.test(u.hostname) || /\s/.test(s)) return null;
+      const out = u.href;
+      return out.length <= 200 ? out : null;
+    } catch (e) { return null; }
+  }
+  // A short, readable form for display: "ruizelectric.com/services"
+  function prettyWebsite(url) {
+    try { const u = new URL(url); return (u.hostname.replace(/^www\./, "") + u.pathname.replace(/\/$/, "")).slice(0, 60); }
+    catch (e) { return url; }
+  }
+
   let toastTimer;
   function toast(msg) {
     const t = $("#toast"); t.textContent = msg; t.hidden = false;
@@ -98,6 +117,7 @@
       create: (p) => rpc("create_post", {
         p_kind: p.kind, p_title: p.title, p_body: p.body || "", p_category: p.category || null, p_trade: p.trade || null,
         p_area: p.area || null, p_rate: p.rate || null, p_contact: p.contact || null, p_hide_name: !!p.hide_name,
+        p_website: p.website || null,
       }),
       setStatus: (id, status) => rpc("set_post_status", { p_id: id, p_status: status }),
       renew: (id) => rpc("renew_post", { p_id: id }),
@@ -118,7 +138,7 @@
     let rows = [
       { ...base, id: "d1", kind: "prayer", title: "Sample: Healing for my dad after heart surgery", body: "He’s home now but recovery is slow. Pray for strength for him and patience for my mom, who is caring for him.", author_name: "Sample member", status: "open", created_at: iso(3 * 3600e3), expires_at: iso(-57 * DAY), prayer_count: 14 },
       { ...base, id: "d2", kind: "need", title: "Sample: Rides to chemo on Tuesday mornings", body: "Appointments are at 9:00 at the regional cancer center for the next six weeks.", category: "Rides", area: "Eastside", contact: "555-0142", author_name: "Sample member", status: "open", created_at: iso(DAY), expires_at: iso(-59 * DAY) },
-      { ...base, id: "d3", kind: "skill", title: "Sample: Licensed electrician", body: "Panel upgrades, outlets, lighting and troubleshooting. Licensed and insured, 15 years experience.", trade: "Electrical", area: "Within 25 miles", rate: "Free estimates", contact: "electric@example.com", author_name: "Sample tradesperson", status: "open", created_at: iso(2 * DAY), expires_at: iso(-58 * DAY) },
+      { ...base, id: "d3", kind: "skill", title: "Sample: Licensed electrician", body: "Panel upgrades, outlets, lighting and troubleshooting. Licensed and insured, 15 years experience.", trade: "Electrical", area: "Within 25 miles", rate: "Free estimates", contact: "electric@example.com", website: "https://www.example.com/", author_name: "Sample tradesperson", status: "open", created_at: iso(2 * DAY), expires_at: iso(-58 * DAY) },
       { ...base, id: "d4", kind: "prayer", title: "Sample: A new job after a layoff", body: "", author_name: null, hide_name: true, status: "open", created_at: iso(4 * DAY), expires_at: iso(-56 * DAY), prayer_count: 6 },
       { ...base, id: "d5", kind: "skill", title: "Sample: Math and reading tutor", body: "Retired teacher. Grades 2–8, in person or online.", trade: "Tutoring", area: "Online or church library", rate: "$25/hr", contact: "555-0177", author_name: "Sample tradesperson", status: "open", created_at: iso(6 * DAY), expires_at: iso(-54 * DAY) },
       { ...base, id: "d6", kind: "need", title: "Sample: Meals for a family with a new baby", body: "Two dinners a week for the next three weeks would be a huge help.", category: "Meals", area: "Northside", contact: "555-0108", author_name: "Sample member", status: "closed", created_at: iso(12 * DAY), expires_at: iso(-48 * DAY) },
@@ -276,6 +296,11 @@
       Object.assign(p, { trade: v("#f-trade"), area: v("#f-area"), rate: v("#f-rate"), contact: v("#f-contact") });
       if (!p.trade) return fail("Choose the trade you offer.", "#f-trade");
       if (!p.contact) return fail("Add a phone number or email so people can reach you.", "#f-contact");
+      const site = v("#f-website");
+      if (site) {
+        p.website = normalizeWebsite(site);
+        if (!p.website) return fail("That website address doesn’t look right. Try something like www.yourbusiness.com.", "#f-website");
+      }
     }
     $("#submitBtn").disabled = true;
     const ok = await act(() => api.create(p), S.me.isModerator ? "Posted to the board." : "Thanks! A moderator will review your post before it appears.");
@@ -393,6 +418,9 @@
       h("h3", { text: r.title }),
       r.body ? h("p", { class: "body", text: r.body }) : null,
       facts.length ? h("div", { class: "facts" }, facts.map((f) => h("span", { class: "fact", text: f }))) : null,
+      r.kind === "skill" && r.website && /^https?:\/\//i.test(r.website)
+        ? h("a", { class: "site-link", href: r.website, target: "_blank", rel: "noopener noreferrer nofollow ugc", text: prettyWebsite(r.website) })
+        : null,
       h("div", { class: "byline", text: who })
     );
 

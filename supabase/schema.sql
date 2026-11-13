@@ -45,6 +45,7 @@ create table if not exists public.posts (
   area        text check (char_length(area) <= 60),
   rate        text check (char_length(rate) <= 60),
   contact     text check (char_length(contact) <= 80),
+  website     text check (website is null or (char_length(website) <= 200 and website ~* '^https?://[^[:space:]]+$')),
   hide_name   boolean not null default false,
   status      public.post_status not null default 'pending',
   created_at  timestamptz not null default now(),
@@ -106,7 +107,7 @@ drop view if exists public.board_posts;
 create view public.board_posts as
 select
   p.id, p.kind, p.title, p.body, p.category, p.trade, p.area, p.rate,
-  p.status, p.created_at, p.expires_at, p.hide_name,
+  p.status, p.created_at, p.expires_at, p.hide_name, p.website,
   (p.expires_at <= now()) as expired,
   (p.author_id = auth.uid()) as is_mine,
   case
@@ -151,10 +152,14 @@ begin
   on conflict (id) do update set display_name = excluded.display_name;
 end $$;
 
+-- The older version without a website (removed so the two don't clash)
+drop function if exists public.create_post(text, text, text, text, text, text, text, text, boolean);
+
 create or replace function public.create_post(
   p_kind text, p_title text, p_body text default '',
   p_category text default null, p_trade text default null, p_area text default null,
-  p_rate text default null, p_contact text default null, p_hide_name boolean default false
+  p_rate text default null, p_contact text default null, p_hide_name boolean default false,
+  p_website text default null
 ) returns uuid language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := public.require_user();
@@ -172,7 +177,12 @@ begin
     raise exception 'Trade listings need a trade and a way to reach you.';
   end if;
 
-  insert into public.posts (author_id, kind, title, body, category, trade, area, rate, contact, hide_name, status)
+  if p_kind = 'skill' and public.clean(p_website) is not null
+     and (char_length(btrim(p_website)) > 200 or btrim(p_website) !~* '^https?://[^[:space:]]+$') then
+    raise exception 'Enter a full website address starting with https://';
+  end if;
+
+  insert into public.posts (author_id, kind, title, body, category, trade, area, rate, contact, website, hide_name, status)
   values (
     uid, p_kind::public.post_kind, btrim(p_title), coalesce(btrim(p_body), ''),
     case when p_kind = 'need'  then public.clean(p_category) end,
@@ -180,6 +190,7 @@ begin
     case when p_kind <> 'prayer' then public.clean(p_area) end,
     case when p_kind = 'skill' then public.clean(p_rate) end,
     case when p_kind <> 'prayer' then public.clean(p_contact) end,
+    case when p_kind = 'skill' then public.clean(p_website) end,
     case when p_kind = 'prayer' then coalesce(p_hide_name, false) else false end,
     case when public.is_moderator() then 'open'::public.post_status else 'pending'::public.post_status end
   ) returning id into new_id;
@@ -269,7 +280,7 @@ end $$;
 revoke execute on all functions in schema public from public, anon;
 grant execute on function
   public.get_me(), public.set_display_name(text),
-  public.create_post(text, text, text, text, text, text, text, text, boolean),
+  public.create_post(text, text, text, text, text, text, text, text, boolean, text),
   public.set_post_status(uuid, text), public.renew_post(uuid), public.delete_post(uuid),
   public.toggle_prayer(uuid), public.report_post(uuid, text), public.list_reports(uuid)
 to authenticated;

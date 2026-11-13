@@ -15,6 +15,7 @@ A public community bulletin board for prayer requests, needs, and trades for hir
 | `docs/` | The website: plain HTML, CSS and JavaScript. No build step. GitHub Pages serves this folder, which is why it's called `docs`. |
 | `docs/config.js` | **The only file you edit**: Supabase keys, church name, brand colors. |
 | `supabase/schema.sql` | The database tables and security rules. You run it once. |
+| `supabase/updates/` | Changes for a database that's already running (run each once, oldest first). New installs only need `schema.sql`. |
 
 With no Supabase keys in `config.js`, the site runs in **demo mode**: sample posts, nothing saved, and you're a moderator as soon as you sign in.
 
