@@ -3,7 +3,8 @@
 A public community bulletin board for prayer requests, needs, and trades for hire.
 
 - **Anyone** can read the board.
-- People **sign in with their email** (a sign-in link, no password) to post, pray along, report a post, or see contact details.
+- People **sign in with an email and password** (or an emailed sign-in link) to post, pray along, report a post, or see contact details. Passwords need 8+ characters with letters and numbers; "Forgot password?" emails a reset link.
+- **New accounts need the church code.** Moderators see and change it at the top of the Review tab. Existing accounts are never asked for it. (Set up by `supabase/updates/2026-11-13-church-code.sql` plus the "Before User Created" hook in Supabase → Authentication → Auth Hooks.)
 - **Moderators approve** every new post before it appears, and see reported posts in a Review tab.
 - Posts **expire after 60 days**. Authors can renew them, mark them answered or met, or remove them.
 - Prayer requests can hide the poster's name from other readers. Moderators can still see it.

@@ -30,15 +30,48 @@
 
   <!-- Sign in -->
   <section class="panel" id="signInPanel" hidden aria-labelledby="signInTitle">
-    <h2 id="signInTitle">Sign in to post</h2>
-    <p class="muted">Enter your email and we’ll send you a sign-in link. You don’t need a password.</p>
-    <form id="signInForm" class="inline-form" novalidate>
-      <label class="sr-only" for="signInEmail">Email</label>
-      <input id="signInEmail" type="email" autocomplete="email" placeholder="you@example.com" required>
-      <button class="btn primary" type="submit" id="signInBtn">Email me a link</button>
-      <button class="btn quiet" type="button" data-close="signInPanel">Cancel</button>
+    <h2 id="signInTitle">Sign in</h2>
+    <p class="muted" id="signInIntro">Sign in with your email and password.</p>
+    <form id="signInForm" class="auth-form" novalidate>
+      <div class="field">
+        <label for="signInEmail">Email</label>
+        <input id="signInEmail" type="email" autocomplete="email" placeholder="you@example.com" required>
+      </div>
+      <div class="field" id="passwordField">
+        <label for="signInPassword">Password</label>
+        <div class="pw-wrap">
+          <input id="signInPassword" type="password" autocomplete="current-password">
+          <button type="button" class="btn quiet small" id="togglePw" aria-pressed="false" aria-controls="signInPassword">Show</button>
+        </div>
+        <span class="hint" id="passwordHint" hidden>At least 8 characters, with letters and numbers.</span>
+      </div>
+      <div class="field" id="codeField" hidden>
+        <label for="signupCode" id="codeLabel">Church code</label>
+        <input id="signupCode" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="40">
+        <span class="hint" id="codeHint">You can get the code at church.</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" type="submit" id="signInBtn">Sign in</button>
+        <button class="btn quiet" type="button" data-close="signInPanel">Cancel</button>
+      </div>
     </form>
     <p class="form-msg" id="signInMsg" role="status"></p>
+    <div class="auth-links" id="authLinks"></div>
+  </section>
+
+  <!-- Choose a new password (after a reset link) -->
+  <section class="panel" id="newPasswordPanel" hidden aria-labelledby="newPwTitle">
+    <h2 id="newPwTitle">Choose a new password</h2>
+    <p class="muted">You’re signed in from your reset link. Pick the password you’ll use from now on.</p>
+    <form id="newPasswordForm" class="auth-form" novalidate>
+      <div class="field">
+        <label for="newPassword">New password</label>
+        <input id="newPassword" type="password" autocomplete="new-password">
+        <span class="hint">At least 8 characters, with letters and numbers.</span>
+      </div>
+      <div class="btn-row"><button class="btn primary" type="submit" id="newPwBtn">Save password</button></div>
+    </form>
+    <p class="form-msg" id="newPwMsg" role="alert"></p>
   </section>
 
   <!-- First-time name -->
@@ -128,6 +161,7 @@
     </div>
   </div>
 
+  <div id="reviewTools" hidden></div>
   <main class="board" id="board" aria-live="polite"></main>
 
   <details class="guide">

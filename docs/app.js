@@ -95,20 +95,46 @@
     return {
       demo: false,
       // Defer: calling Supabase from inside this callback can deadlock its auth lock.
-      onAuth(cb) { sb.auth.onAuthStateChange(() => { setTimeout(cb, 0); }); },
+      onAuth(cb) { sb.auth.onAuthStateChange((event) => { setTimeout(() => cb(event), 0); }); },
       async me() {
         const { data: { session } } = await sb.auth.getSession();
         if (!session) return { signedIn: false };
         const info = await rpc("get_me");
         return { signedIn: true, email: session.user.email, displayName: info && info.display_name, isModerator: !!(info && info.is_moderator) };
       },
-      async signIn(email) {
-        const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+      async signIn(email, code) {
+        // The church code only matters if this email is new; existing accounts ignore it.
+        const options = { emailRedirectTo: location.origin + location.pathname };
+        if (code) options.data = { church_code: code };
+        const { error } = await sb.auth.signInWithOtp({ email, options });
         if (error) throw new Error(error.message);
         return { sent: true };
       },
+      async signInPassword(email, password) {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw new Error(error.message);
+        return { signedIn: true };
+      },
+      async signUp(email, password, code) {
+        const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname, data: { church_code: code } } });
+        if (error) throw new Error(error.message);
+        // Supabase answers an already-registered email with a user that has no identities.
+        if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) throw new Error("User already registered");
+        return data.session ? { signedIn: true } : { confirm: true };
+      },
+      async sendReset(email) {
+        const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+        if (error) throw new Error(error.message);
+        return { sent: true };
+      },
+      async updatePassword(password) {
+        const { error } = await sb.auth.updateUser({ password });
+        if (error) throw new Error(error.message);
+      },
       async signOut() { await sb.auth.signOut(); },
       setName: (name) => rpc("set_display_name", { p_name: name }),
+      getSignupCode: () => rpc("get_signup_code"),
+      setSignupCode: (code) => rpc("set_signup_code", { p_code: code }),
       async list() {
         const { data, error } = await sb.from("board_posts").select("*").order("created_at", { ascending: false }).limit(1000);
         if (error) throw new Error(error.message);
@@ -147,6 +173,7 @@
     ];
     const reasons = { d8: [{ reason: "Looks like a scam asking for gift cards.", created_at: iso(3600e3) }, { reason: "Not a real need.", created_at: iso(2 * 3600e3) }] };
     let authCb = () => {};
+    let demoCode = "DEMO";
     const delay = (v) => new Promise((r) => setTimeout(() => r(v), 120));
     const view = () => rows
       .filter((r) => me.isModerator || r.is_mine || (["open", "closed"].includes(r.status) && !r.expired))
@@ -166,6 +193,29 @@
         me = { signedIn: true, email, displayName: null, isModerator: true };
         setTimeout(authCb, 0);
         return { sent: false };
+      },
+      async signInPassword(email, password) {
+        if (password !== "demo-password") throw new Error("Invalid login credentials");
+        me = { signedIn: true, email, displayName: null, isModerator: true };
+        setTimeout(authCb, 0);
+        return { signedIn: true };
+      },
+      async signUp(email, password, code) {
+        if (password.length < 8) throw new Error("Password should be at least 8 characters.");
+        if (String(code || "").trim().toLowerCase() !== demoCode.toLowerCase()) throw new Error("That church code doesn't match. Ask at church for the current code.");
+        return { confirm: true };
+      },
+      getSignupCode: () => delay(demoCode),
+      async setSignupCode(code) { demoCode = code.trim(); return delay(); },
+      async sendReset(email) {
+        // In the demo, act as if the reset link was clicked right away.
+        me = { signedIn: true, email, displayName: "Demo Tester", isModerator: true };
+        setTimeout(() => authCb("PASSWORD_RECOVERY"), 300);
+        return { sent: true };
+      },
+      async updatePassword(password) {
+        if (password.length < 8) throw new Error("Password should be at least 8 characters.");
+        return delay();
       },
       async signOut() { me = { signedIn: false }; setTimeout(authCb, 0); },
       async setName(name) { me.displayName = name.trim(); return delay(); },
@@ -243,7 +293,8 @@
 
   // ---------- Panels ----------
   function openPanel(id) {
-    ["signInPanel", "namePanel", "composer"].forEach((p) => { $("#" + p).hidden = p !== id; });
+    if (id === "signInPanel" && $("#signInPanel").hidden) setAuthMode("signin");
+    ["signInPanel", "newPasswordPanel", "namePanel", "composer"].forEach((p) => { $("#" + p).hidden = p !== id; });
     const first = $("#" + id).querySelector("input, textarea");
     if (first) first.focus();
   }
@@ -257,7 +308,7 @@
       box.append(h("button", { class: "btn on-band primary", type: "button", onclick: () => openPanel("signInPanel"), text: "Sign in to post" }));
       return;
     }
-    if (!me.displayName) { if ($("#namePanel").hidden) openPanel("namePanel"); }
+    if (!me.displayName && $("#newPasswordPanel").hidden) { if ($("#namePanel").hidden) openPanel("namePanel"); }
     box.append(
       h("span", { class: "who" }, "Signed in as ", h("b", { text: me.displayName || me.email || "you" }), me.isModerator ? " · Moderator" : ""),
       h("button", { class: "btn on-band small", type: "button", onclick: () => act(() => api.signOut(), "Signed out."), text: "Sign out" })
@@ -265,18 +316,116 @@
     if (me.displayName) box.append(h("button", { class: "btn on-band primary", type: "button", onclick: () => { $("#composer").hidden ? openComposer() : closePanel("composer"); }, text: "+ Post to the board" }));
   }
 
+  // ---------- Sign in: password, new account, email link, reset ----------
+  const AUTH_MODES = {
+    signin: { title: "Sign in", intro: "Sign in with your email and password.", password: true, autocomplete: "current-password", submit: "Sign in",
+      links: [["signup", "New here? Create an account"], ["forgot", "Forgot password?"], ["link", "Email me a sign-in link instead"]] },
+    signup: { title: "Create an account", intro: "Choose a password and enter the church code. We’ll email you once to confirm your address.", password: true, autocomplete: "new-password", submit: "Create account", hint: true, code: "required",
+      links: [["signin", "Already have an account? Sign in"], ["link", "Email me a sign-in link instead"]] },
+    link: { title: "Sign in with an email link", intro: "We’ll email you a link that signs you in. No password needed.", password: false, submit: "Email me a link", code: "optional",
+      links: [["signin", "Use a password instead"]] },
+    forgot: { title: "Reset your password", intro: "Enter your email and we’ll send a link to choose a new password.", password: false, submit: "Email me a reset link",
+      links: [["signin", "Back to sign in"]] },
+  };
+  let authMode = "signin";
+  function setAuthMode(mode, keepMsg) {
+    authMode = mode;
+    const m = AUTH_MODES[mode];
+    $("#signInTitle").textContent = m.title;
+    $("#signInIntro").textContent = m.intro;
+    $("#passwordField").hidden = !m.password;
+    $("#passwordHint").hidden = !m.hint;
+    $("#codeField").hidden = !m.code;
+    $("#codeLabel").textContent = m.code === "optional" ? "Church code (only if you’re new here)" : "Church code";
+    const pw = $("#signInPassword");
+    if (m.password) pw.setAttribute("autocomplete", m.autocomplete);
+    pw.value = "";
+    $("#signInBtn").textContent = m.submit;
+    if (!keepMsg) { $("#signInMsg").textContent = ""; $("#signInMsg").classList.remove("bad"); }
+    $("#authLinks").replaceChildren(...m.links.map(([to, label]) =>
+      h("button", { class: "link-btn", type: "button", onclick: () => {
+        setAuthMode(to);
+        $(!$("#signInEmail").value || !AUTH_MODES[to].password ? "#signInEmail" : "#signInPassword").focus();
+      }, text: label })));
+  }
+  setAuthMode("signin");
+
+  $("#togglePw").addEventListener("click", () => {
+    const pw = $("#signInPassword"), show = pw.type === "password";
+    pw.type = show ? "text" : "password";
+    $("#togglePw").textContent = show ? "Hide" : "Show";
+    $("#togglePw").setAttribute("aria-pressed", String(show));
+  });
+
+  // Matches the rules set in Supabase (Authentication → Sign In / Providers → Email).
+  const PASSWORD_RULE = "Use at least 8 characters, with both letters and numbers.";
+  const strongEnough = (pw) => pw.length >= 8 && /[a-z]/i.test(pw) && /\d/.test(pw);
+
+  function authMessage(e) {
+    const m = (e && e.message) || "";
+    if (/Invalid login credentials/i.test(m)) return "That email and password don’t match. Try again, use “Forgot password?”, or sign in with an email link.";
+    if (/Email not confirmed/i.test(m)) return "Please confirm your email first. Check your inbox for the confirmation link we sent.";
+    if (/already registered|already exists/i.test(m)) return "That email already has an account. Sign in instead, or use “Forgot password?” to set a new password.";
+    if (/at least \d+ characters|should be at least|should contain/i.test(m)) return PASSWORD_RULE;
+    if (/weak|pwned|compromised|easy to guess/i.test(m)) return "That password is too easy to guess. Try a longer one, like a short phrase.";
+    if (/rate limit|security purposes|too many/i.test(m)) return "Too many tries in a short time. Please wait a minute and try again.";
+    if (/church code/i.test(m)) return m;
+    if (/hook|signups not allowed|database error saving new user/i.test(m)) return "We couldn’t create an account with that church code. Check the code and try again, or ask at church.";
+    return friendly(e);
+  }
+
   $("#signInForm").addEventListener("submit", async (ev) => {
     ev.preventDefault();
-    const email = $("#signInEmail").value.trim(), msg = $("#signInMsg");
-    msg.classList.remove("bad");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg.textContent = "Enter a full email address, like name@example.com."; msg.classList.add("bad"); return; }
+    const email = $("#signInEmail").value.trim(), password = $("#signInPassword").value, code = $("#signupCode").value.trim(), msg = $("#signInMsg");
+    const bad = (text, el) => { msg.textContent = text; msg.classList.add("bad"); if (el) $(el).focus(); };
+    msg.classList.remove("bad"); msg.textContent = "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return bad("Enter a full email address, like name@example.com.", "#signInEmail");
+    if (AUTH_MODES[authMode].password) {
+      if (!password) return bad("Enter your password.", "#signInPassword");
+      if (authMode === "signup" && !strongEnough(password)) return bad(PASSWORD_RULE, "#signInPassword");
+    }
+    if (authMode === "signup" && !code) return bad("Enter the church code. You can get it at church.", "#signupCode");
     $("#signInBtn").disabled = true;
     try {
-      const r = await api.signIn(email);
-      if (r.sent) msg.textContent = "Check your email for a sign-in link. You can close this page; the link brings you back.";
-      else { closePanel("signInPanel"); toast("Signed in (demo). You’re a moderator in the demo."); }
-    } catch (e) { msg.textContent = friendly(e); msg.classList.add("bad"); }
+      if (authMode === "signin") {
+        await api.signInPassword(email, password);
+        closePanel("signInPanel");
+        toast(api.demo ? "Signed in (demo). You’re a moderator in the demo." : "Signed in.");
+      } else if (authMode === "signup") {
+        const r = await api.signUp(email, password, code);
+        if (r.signedIn) { closePanel("signInPanel"); toast("Account created. Welcome!"); }
+        else { setAuthMode("signin", true); $("#signInEmail").value = email; msg.textContent = "Almost done! Check your email for a link to confirm your address, then sign in here with your password."; }
+      } else if (authMode === "link") {
+        const r = await api.signIn(email, code);
+        if (r.sent) msg.textContent = "Check your email for a sign-in link. You can close this page; the link brings you back.";
+        else { closePanel("signInPanel"); toast("Signed in (demo). You’re a moderator in the demo."); }
+      } else if (authMode === "forgot") {
+        await api.sendReset(email);
+        msg.textContent = "If that email has an account, a reset link is on its way. Open it on this device to choose a new password.";
+      }
+    } catch (e) { bad(authMessage(e)); }
     finally { $("#signInBtn").disabled = false; }
+  });
+
+  // Arriving from a password reset email
+  function showNewPassword() {
+    openPanel("newPasswordPanel");
+    $("#newPwMsg").textContent = "";
+  }
+  $("#newPasswordForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const pw = $("#newPassword").value, msg = $("#newPwMsg");
+    msg.classList.remove("bad");
+    if (!strongEnough(pw)) { msg.textContent = PASSWORD_RULE; msg.classList.add("bad"); return; }
+    $("#newPwBtn").disabled = true;
+    try {
+      await api.updatePassword(pw);
+      $("#newPassword").value = "";
+      closePanel("newPasswordPanel");
+      toast("Password saved. Use it next time you sign in.");
+      await refresh();
+    } catch (e) { msg.textContent = authMessage(e); msg.classList.add("bad"); }
+    finally { $("#newPwBtn").disabled = false; }
   });
 
   $("#nameForm").addEventListener("submit", async (ev) => {
@@ -378,6 +527,7 @@
     const rank = (r) => (r.status === "closed" ? 1 : 0);
     list.sort((a, b) => rank(a) - rank(b) || String(b.created_at).localeCompare(String(a.created_at)));
 
+    renderReviewTools();
     const board = $("#board");
     if (!S.loaded) { board.replaceChildren(empty("Loading posts…", "Gathering prayer requests, needs and trades.")); return; }
     if (!list.length) {
@@ -394,6 +544,46 @@
       return;
     }
     board.replaceChildren(...list.map(card));
+  }
+
+  // Church sign-up code, shown to moderators at the top of the Review tab.
+  let codeState = { value: undefined, editing: false, saving: false };
+  function renderReviewTools() {
+    const box = $("#reviewTools");
+    const show = S.tab === "review" && S.me.isModerator;
+    box.hidden = !show;
+    if (!show) return;
+    if (codeState.value === undefined) {
+      codeState.value = null;
+      api.getSignupCode().then((c) => { codeState.value = c || ""; render(); }, () => { codeState.value = ""; render(); });
+    }
+    const card = h("div", { class: "code-card" });
+    if (codeState.editing) {
+      const input = h("input", { id: "newSignupCode", maxlength: "40", value: codeState.value || "", "aria-label": "New church code", autocomplete: "off", spellcheck: "false" });
+      const save = async () => {
+        const v = input.value.trim();
+        if (v.length < 4) { toast("Use a code with at least 4 characters."); input.focus(); return; }
+        codeState.saving = true; render();
+        try { await api.setSignupCode(v); codeState = { value: v, editing: false, saving: false }; toast("Church code changed. Share the new one at church."); }
+        catch (e) { codeState.saving = false; toast(friendly(e)); }
+        render();
+      };
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") save(); if (e.key === "Escape") { codeState.editing = false; render(); } });
+      card.append(
+        h("label", { for: "newSignupCode" }, h("b", { text: "New church code" })),
+        input,
+        h("button", { class: "btn small primary", type: "button", disabled: codeState.saving, onclick: save, text: codeState.saving ? "Saving…" : "Save" }),
+        h("button", { class: "btn small quiet", type: "button", onclick: () => { codeState.editing = false; render(); }, text: "Cancel" }),
+        h("span", { class: "hint", text: "People who already have accounts aren’t affected. Only new sign-ups need the new code." })
+      );
+      setTimeout(() => { if (document.activeElement !== input) input.focus(); }, 0);
+    } else {
+      card.append(
+        h("span", {}, "Church code for new accounts: ", codeState.value == null ? "…" : h("span", { class: "code-value", text: codeState.value || "(none set)" })),
+        h("button", { class: "btn small", type: "button", disabled: codeState.value == null, onclick: () => { codeState.editing = true; render(); }, text: "Change code" })
+      );
+    }
+    box.replaceChildren(card);
   }
 
   function empty(title, text, withButton) {
@@ -516,7 +706,10 @@
 
   // ---------- Boot ----------
   render();
-  api.onAuth(() => refresh());
+  api.onAuth((event) => {
+    if (event === "PASSWORD_RECOVERY") showNewPassword();
+    refresh();
+  });
   refresh();
-  setInterval(() => { if (!document.hidden && !S.reporting && $("#composer").hidden) refresh(); }, 60000);
+  setInterval(() => { if (!document.hidden && !S.reporting && !codeState.editing && $("#composer").hidden) refresh(); }, 60000);
 })();
