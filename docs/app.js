@@ -11,7 +11,7 @@
     need:   { label: "Need", closed: "Met", close: "Mark met", reopen: "Reopen", titleLabel: "What do you need?", bodyLabel: "Details", titlePh: "e.g. Rides to chemo on Tuesdays", submit: "Post need" },
     skill:  { label: "Trade for hire", closed: "Not taking work", close: "Pause listing", reopen: "Resume listing", titleLabel: "Your business or name", bodyLabel: "What you do", titlePh: "e.g. Ruiz Family Electric", submit: "List my trade" },
     free:   { label: "Freecycle", closed: "Claimed", close: "Mark claimed", reopen: "Available again", titleLabel: "Item you want to give away", bodyLabel: "Details", titlePh: "e.g. Kids’ bike", bodyPh: "Size, condition, anything people should know", submit: "Post item" },
-    event:  { label: "Community event", closed: "Canceled", close: "Cancel event", reopen: "Event is back on", titleLabel: "Name of the event", bodyLabel: "Description", titlePh: "e.g. Fall Harvest Potluck", bodyPh: "What’s happening, where, what time, and who’s invited", submit: "Post event" },
+    event:  { label: "Community event", closed: "Canceled", close: "Cancel event", reopen: "Event is back on", titleLabel: "Name of the event", bodyLabel: "Description", titlePh: "e.g. Riverside Neighborhood Fall Festival", bodyPh: "What’s happening, where, what time, and who’s invited", submit: "Post event" },
   };
   const BOARD_TABS = ["all", "prayer", "need", "skill", "free", "event"];
   const DAY = 86400000;
@@ -175,7 +175,7 @@
       { ...base, id: "d6", kind: "need", title: "Sample: Meals for a family with a new baby", body: "Two dinners a week for the next three weeks would be a huge help.", category: "Meals", area: "Northside", contact: "555-0108", author_name: "Sample member", status: "closed", created_at: iso(12 * DAY), expires_at: iso(-48 * DAY), testimony: "Sample: Six families signed up within a day, and we had dinners covered for all three weeks. Thank you for loving us so well!", testimony_status: "approved", testimony_share: true },
       { ...base, id: "d7", kind: "skill", title: "Sample: Lawn care and leaf cleanup", body: "Weekly mowing, fall cleanup, small landscaping jobs.", trade: "Landscaping & lawn", area: "Westside", contact: "555-0190", author_name: "Sample tradesperson", status: "pending", created_at: iso(2 * 3600e3), expires_at: iso(-60 * DAY) },
       { ...base, id: "d9", kind: "free", title: "Sample: Crib and changing table", body: "Solid wood, gently used. You pick up; I can help load.", category: "Porch pickup · Exchange at church", area: "Southside", contact: "555-0123", author_name: "Sample member", status: "open", created_at: iso(8 * 3600e3), expires_at: iso(-59 * DAY) },
-      { ...base, id: "d10", kind: "event", title: "Sample: Fall Harvest Potluck", body: "Bring a dish to share! Fellowship hall, 5:30–7:30 pm. Everyone is welcome, including friends and neighbors.", event_date: localDate(new Date(now + 9 * DAY)), website: "https://www.example.com/potluck", area: "Sample host", contact: "555-0150", author_name: "Sample member", status: "open", created_at: iso(2 * DAY), expires_at: iso(-10 * DAY) },
+      { ...base, id: "d10", kind: "event", title: "Sample: Riverside Neighborhood Fall Festival", body: "Food trucks, live music and games for kids at Riverside Park, 11 am–4 pm. Free and open to everyone.", event_date: localDate(new Date(now + 9 * DAY)), website: "https://www.example.com/potluck", area: "Sample host", contact: "555-0150", author_name: "Sample member", status: "open", created_at: iso(2 * DAY), expires_at: iso(-10 * DAY) },
       { ...base, id: "d8", kind: "need", title: "Sample: Cash needed fast, message me", body: "Send gift cards and I’ll pay you back double.", category: "Financial help", contact: "scam@example.com", author_name: "Sample account", status: "open", created_at: iso(5 * 3600e3), expires_at: iso(-60 * DAY), report_count: 2 },
     ];
     const reasons = { d8: [{ reason: "Looks like a scam asking for gift cards.", created_at: iso(3600e3) }, { reason: "Not a real need.", created_at: iso(2 * 3600e3) }] };
@@ -482,7 +482,7 @@
     // Contact and link are optional for events; the link field is a business website for trades.
     $("#l-contact").replaceChildren(...(kind === "event" ? ["Contact info ", h("span", { class: "hint", text: "(optional)" })] : ["How to reach you"]));
     $("#l-website").replaceChildren(kind === "event" ? "Link for more details" : "Business website", " ", h("span", { class: "hint", text: "(optional)" }));
-    $("#f-website").placeholder = kind === "event" ? "e.g. www.follow-church.com/events" : "e.g. www.ruizelectric.com";
+    $("#f-website").placeholder = kind === "event" ? "e.g. www.riversidefestival.org" : "e.g. www.ruizelectric.com";
     $("#postFootHint").textContent = "A moderator reviews each post before it appears on the board. " + (kind === "event" ? "Events come down after the event date." : "Posts stay up for 60 days, and you can renew them.");
   }
   function openComposer() {
@@ -553,7 +553,7 @@
       const site = v("#f-website");
       if (site) {
         p.website = normalizeWebsite(site);
-        if (!p.website) return fail("That link doesn’t look right. Try something like www.follow-church.com/events.", "#f-website");
+        if (!p.website) return fail("That link doesn’t look right. Try something like www.riversidefestival.org.", "#f-website");
       }
     }
     $("#submitBtn").disabled = true;
