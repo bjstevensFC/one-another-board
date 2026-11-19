@@ -642,7 +642,7 @@
 
     let who;
     if (r.is_mine) who = r.hide_name ? "You (name hidden from others)" : "You";
-    else if (r.hide_name && !r.author_name) who = "A member of our community";
+    else if (r.hide_name && !r.author_name) who = "A member of the Follow Church community";
     else who = (r.author_name || "A member of the Follow Church community") + (r.hide_name ? " (name hidden from others)" : "");
 
     const facts = (r.kind === "free" && r.category ? [...r.category.split(" · "), r.area] : [r.trade, r.category, r.area, r.rate]).filter(Boolean);
