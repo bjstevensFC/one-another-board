@@ -492,7 +492,7 @@
     const p = { kind, title: v("#f-title"), body: v("#f-body") };
     const fail = (text, el) => { msg.textContent = text; msg.classList.add("bad"); if (el) $(el).focus(); };
     if (!p.title) return fail(kind === "skill" ? "Add your business or name." : "Add a short title.", "#f-title");
-    if ((kind === "need" || kind === "skill") && !$("#ackPost").checked) return fail("Please read “How this board works” and check the box to agree.", "#ackPost");
+    if (!$("#ackPost").checked) return fail("Please read “How this board works” and check the box to agree.", "#ackPost");
     if (kind === "prayer") p.hide_name = $("#f-hide").checked;
     if (kind === "need") Object.assign(p, { category: v("#f-category"), area: v("#f-area"), contact: v("#f-contact") });
     if (kind === "free") {
