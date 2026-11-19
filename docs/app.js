@@ -553,8 +553,8 @@
         all: ["The board is empty for now", "Be the first to share a prayer request, ask for help, or list the trade work you do."],
         prayer: ["No prayer requests yet", "Share what’s on your heart and let others pray with you."],
         need: ["No open needs right now", "Need a meal, a ride or a hand with something? Post it here."],
-        skill: ["No trades listed yet", "Electrician, painter, tutor, mechanic? List your work so neighbors can hire you."],
-        free: ["Nothing free right now", "Have a crib, a couch or a box of books you no longer need? Give it to a neighbor here."],
+        skill: ["No trades listed yet", "Electrician, painter, tutor, mechanic? List your work so members of the Follow Church community can hire you."],
+        free: ["Nothing free right now", "Have a crib, a couch or a box of books you no longer need? Give it to a member of the Follow Church community here."],
         mine: ["You haven’t posted yet", "Your posts show up here, including ones waiting for review."],
         review: ["Nothing to review", "New posts and reported posts will show up here."],
       };
@@ -642,7 +642,7 @@
     let who;
     if (r.is_mine) who = r.hide_name ? "You (name hidden from others)" : "You";
     else if (r.hide_name && !r.author_name) who = "A member of our community";
-    else who = (r.author_name || "A neighbor") + (r.hide_name ? " (name hidden from others)" : "");
+    else who = (r.author_name || "A member of the Follow Church community") + (r.hide_name ? " (name hidden from others)" : "");
 
     const facts = (r.kind === "free" && r.category ? [...r.category.split(" · "), r.area] : [r.trade, r.category, r.area, r.rate]).filter(Boolean);
     const main = h("div", { class: "main" },
