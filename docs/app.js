@@ -627,7 +627,7 @@
         need: ["No open needs right now", "Need a meal, a ride or a hand with something? Post it here."],
         skill: ["No trades listed yet", "Electrician, painter, tutor, mechanic? List your work so members of the Follow Church community can hire you."],
         free: ["Nothing free right now", "Have a crib, a couch or a box of books you no longer need? Give it to a member of the Follow Church community here."],
-        event: ["No upcoming events", "Hosting a gathering, service project or community event? Share it here."],
+        event: ["No upcoming events", "Hosting or attending a non-Follow Church gathering, service project, or community event? Share it here."],
         mine: ["You haven’t posted yet", "Your posts show up here, including ones waiting for review."],
         review: ["Nothing to review", "New posts, testimonies and reported posts will show up here."],
       };
