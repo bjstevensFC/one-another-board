@@ -25,7 +25,7 @@ create table if not exists public.moderators (
 );
 
 do $$ begin
-  create type public.post_kind as enum ('prayer', 'need', 'skill', 'free', 'event');
+  create type public.post_kind as enum ('prayer', 'need', 'skill', 'free');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
@@ -56,8 +56,7 @@ create table if not exists public.posts (
   testimony        text check (char_length(testimony) <= 1200),
   testimony_status text check (testimony_status in ('pending', 'approved', 'declined')),
   testimony_at     timestamptz,
-  testimony_share  boolean not null default false,  -- OK for the church to share it publicly
-  event_date       date  -- Community events: the day of the event
+  testimony_share  boolean not null default false  -- OK for the church to share it publicly
 );
 create index if not exists posts_status_idx on public.posts (status, expires_at);
 create index if not exists posts_author_idx on public.posts (author_id);
@@ -112,10 +111,8 @@ $$;
 drop view if exists public.board_posts;
 create view public.board_posts as
 select
-  p.id, p.kind, p.title, p.body, p.category, p.trade, p.rate,
-  -- For community events this holds the contact person, so only signed-in people see it
-  case when p.kind = 'event' and auth.uid() is null then null else p.area end as area,
-  p.status, p.created_at, p.expires_at, p.hide_name, p.website, p.event_date,
+  p.id, p.kind, p.title, p.body, p.category, p.trade, p.area, p.rate,
+  p.status, p.created_at, p.expires_at, p.hide_name, p.website,
   (p.expires_at <= now()) as expired,
   (p.author_id = auth.uid()) as is_mine,
   case
@@ -169,13 +166,13 @@ end $$;
 -- The older version without a website (removed so the two don't clash)
 drop function if exists public.create_post(text, text, text, text, text, text, text, text, boolean);
 drop function if exists public.create_post(text, text, text, text, text, text, text, text, boolean, text);
-drop function if exists public.create_post(text, text, text, text, text, text, text, text, boolean, text, timestamptz);
 
 create or replace function public.create_post(
   p_kind text, p_title text, p_body text default '',
   p_category text default null, p_trade text default null, p_area text default null,
   p_rate text default null, p_contact text default null, p_hide_name boolean default false,
-  p_website text default null, p_expires_at timestamptz default null, p_event_date date default null
+  p_website text default null, p_expires_at timestamptz default null,
+  p_event_date date default null  -- no longer used; still accepted so older copies of the site keep working
 ) returns uuid language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := public.require_user();
@@ -185,6 +182,9 @@ declare
 begin
   if not exists (select 1 from public.profiles where id = uid) then
     raise exception 'Add your name before posting.';
+  end if;
+  if p_kind not in ('prayer', 'need', 'skill', 'free') then
+    raise exception 'Unknown post type.';
   end if;
   select count(*) into recent from public.posts where author_id = uid and created_at > now() - interval '1 day';
   if recent >= 5 and not public.is_moderator() then
@@ -200,7 +200,7 @@ begin
     raise exception 'Add a phone number or email so people can reach you about this need.';
   end if;
 
-  if p_kind in ('skill', 'event') and public.clean(p_website) is not null
+  if p_kind = 'skill' and public.clean(p_website) is not null
      and (char_length(btrim(p_website)) > 200 or btrim(p_website) !~* '^https?://[^[:space:]]+$') then
     raise exception 'Enter a full website address starting with https://';
   end if;
@@ -213,20 +213,7 @@ begin
     expires := least(p_expires_at, expires);
   end if;
 
-  -- Community events need a date and come down after the event day
-  -- (p_expires_at is the end of that day in the poster's time zone).
-  if p_kind = 'event' then
-    if p_event_date is null then raise exception 'Choose the date of the event.'; end if;
-    if p_event_date < current_date - 1 then raise exception 'Choose an event date that hasn''t passed yet.'; end if;
-    if p_event_date > current_date + 366 then raise exception 'Choose an event date within the next year.'; end if;
-    if p_expires_at is not null and p_expires_at > now() and p_expires_at <= (p_event_date + 2)::timestamptz then
-      expires := p_expires_at;
-    else
-      expires := (p_event_date + 1)::timestamptz + interval '12 hours';
-    end if;
-  end if;
-
-  insert into public.posts (author_id, kind, title, body, category, trade, area, rate, contact, website, hide_name, status, expires_at, event_date)
+  insert into public.posts (author_id, kind, title, body, category, trade, area, rate, contact, website, hide_name, status, expires_at)
   values (
     uid, p_kind::public.post_kind, btrim(p_title), coalesce(btrim(p_body), ''),
     case when p_kind in ('need', 'free') then public.clean(p_category) end,
@@ -234,11 +221,10 @@ begin
     case when p_kind <> 'prayer' then public.clean(p_area) end,
     case when p_kind = 'skill' then public.clean(p_rate) end,
     case when p_kind <> 'prayer' then public.clean(p_contact) end,
-    case when p_kind in ('skill', 'event') then public.clean(p_website) end,
+    case when p_kind = 'skill' then public.clean(p_website) end,
     case when p_kind = 'prayer' then coalesce(p_hide_name, false) else false end,
     case when public.is_moderator() then 'open'::public.post_status else 'pending'::public.post_status end,
-    expires,
-    case when p_kind = 'event' then p_event_date end
+    expires
   ) returning id into new_id;
   return new_id;
 end $$;
