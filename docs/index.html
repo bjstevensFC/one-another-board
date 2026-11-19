@@ -50,6 +50,10 @@
         <input id="signupCode" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="40">
         <span class="hint" id="codeHint">You can get the code at church.</span>
       </div>
+      <div class="ack" id="signupAck" hidden>
+        <details class="ack-guide"><summary>Read “How this board works”</summary><div class="ack-list"></div></details>
+        <label class="check"><input type="checkbox" id="ackSignup"> I have read and agree to “How this board works.”</label>
+      </div>
       <div class="btn-row">
         <button class="btn primary" type="submit" id="signInBtn">Sign in</button>
         <button class="btn quiet" type="button" data-close="signInPanel">Cancel</button>
@@ -142,6 +146,10 @@
           </div>
         </div>
         <label class="check" data-for="prayer"><input type="checkbox" id="f-hide"> Show my name as “A member of the Follow Church community”</label>
+        <div class="ack" data-for="need skill">
+          <details class="ack-guide"><summary>Read “How this board works”</summary><div class="ack-list"></div></details>
+          <label class="check"><input type="checkbox" id="ackPost"> I have read and agree to “How this board works.”</label>
+        </div>
         <p class="hint">A moderator reviews each post before it appears on the board. Posts stay up for 60 days, and you can renew them.</p>
         <div class="form-actions">
           <span class="form-msg" id="postMsg" role="alert"></span>

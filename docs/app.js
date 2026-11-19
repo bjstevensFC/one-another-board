@@ -118,7 +118,7 @@
         return { signedIn: true };
       },
       async signUp(email, password, code) {
-        const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname, data: { church_code: code } } });
+        const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname, data: { church_code: code, agreed_to_board_guide_at: new Date().toISOString() } } });
         if (error) throw new Error(error.message);
         // Supabase answers an already-registered email with a user that has no identities.
         if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) throw new Error("User already registered");
@@ -340,6 +340,15 @@
       links: [["signin", "Back to sign in"]] },
   };
   let authMode = "signin";
+
+  // "How this board works" acknowledgment: the guide's bullets are copied into each
+  // acknowledgment box so people can read them without leaving the form.
+  document.querySelectorAll(".ack-list").forEach((box) => box.append($(".guide ul").cloneNode(true)));
+  // New accounts must agree. An email sign-in link creates an account only when a church code is entered.
+  const needsSignupAck = () => authMode === "signup" || (authMode === "link" && !!$("#signupCode").value.trim());
+  function showSignupAck() { $("#signupAck").hidden = !needsSignupAck(); }
+  $("#signupCode").addEventListener("input", showSignupAck);
+
   function setAuthMode(mode, keepMsg) {
     authMode = mode;
     const m = AUTH_MODES[mode];
@@ -348,6 +357,7 @@
     $("#passwordField").hidden = !m.password;
     $("#passwordHint").hidden = !m.hint;
     $("#codeField").hidden = !m.code;
+    showSignupAck();
     $("#codeLabel").textContent = m.code === "optional" ? "Church code (only if you’re new here)" : "Church code";
     const pw = $("#signInPassword");
     if (m.password) pw.setAttribute("autocomplete", m.autocomplete);
@@ -397,6 +407,7 @@
       if (authMode === "signup" && !strongEnough(password)) return bad(PASSWORD_RULE, "#signInPassword");
     }
     if (authMode === "signup" && !code) return bad("Enter the church code. You can get it at church.", "#signupCode");
+    if (needsSignupAck() && !$("#ackSignup").checked) return bad("Please read “How this board works” and check the box to agree.", "#ackSignup");
     $("#signInBtn").disabled = true;
     try {
       if (authMode === "signin") {
@@ -481,6 +492,7 @@
     const p = { kind, title: v("#f-title"), body: v("#f-body") };
     const fail = (text, el) => { msg.textContent = text; msg.classList.add("bad"); if (el) $(el).focus(); };
     if (!p.title) return fail(kind === "skill" ? "Add your business or name." : "Add a short title.", "#f-title");
+    if ((kind === "need" || kind === "skill") && !$("#ackPost").checked) return fail("Please read “How this board works” and check the box to agree.", "#ackPost");
     if (kind === "prayer") p.hide_name = $("#f-hide").checked;
     if (kind === "need") Object.assign(p, { category: v("#f-category"), area: v("#f-area"), contact: v("#f-contact") });
     if (kind === "free") {
