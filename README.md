@@ -13,6 +13,7 @@ A public community bulletin board for prayer requests, needs, trades for hire, F
 - Prayer requests can hide the poster's name from other readers. Moderators can still see it.
 
 - **Moderators get an email** when a new post is waiting for review or a post is reported (see `supabase/updates/2026-11-13-review-alerts.sql`; it needs a Resend key saved in Supabase's Vault as `resend_alerts_key`).
+- **Moderators also get an email when someone creates an account** (once they confirm their email address), showing the new member’s email. (See `supabase/updates/2026-11-19-new-account-alerts.sql`.)
 
 **Live at:** https://oneanother.follow-church.com (short link: follow-church.com/oneanother).
 Hosted on GitHub Pages from the `docs` folder. `docs/CNAME` holds the custom address, so keep that file.
