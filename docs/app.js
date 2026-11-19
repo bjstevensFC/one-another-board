@@ -11,8 +11,9 @@
     need:   { label: "Need", closed: "Met", close: "Mark met", reopen: "Reopen", titleLabel: "What do you need?", bodyLabel: "Details", titlePh: "e.g. Rides to chemo on Tuesdays", submit: "Post need" },
     skill:  { label: "Trade for hire", closed: "Not taking work", close: "Pause listing", reopen: "Resume listing", titleLabel: "Your business or name", bodyLabel: "What you do", titlePh: "e.g. Ruiz Family Electric", submit: "List my trade" },
     free:   { label: "Freecycle", closed: "Claimed", close: "Mark claimed", reopen: "Available again", titleLabel: "Item you want to give away", bodyLabel: "Details", titlePh: "e.g. Kids’ bike", bodyPh: "Size, condition, anything people should know", submit: "Post item" },
+    event:  { label: "Community event", closed: "Canceled", close: "Cancel event", reopen: "Event is back on", titleLabel: "Name of the event", bodyLabel: "Description", titlePh: "e.g. Fall Harvest Potluck", bodyPh: "What’s happening, where, what time, and who’s invited", submit: "Post event" },
   };
-  const BOARD_TABS = ["all", "prayer", "need", "skill", "free"];
+  const BOARD_TABS = ["all", "prayer", "need", "skill", "free", "event"];
   const DAY = 86400000;
 
   // ---------- Small helpers ----------
@@ -145,7 +146,7 @@
       create: (p) => rpc("create_post", {
         p_kind: p.kind, p_title: p.title, p_body: p.body || "", p_category: p.category || null, p_trade: p.trade || null,
         p_area: p.area || null, p_rate: p.rate || null, p_contact: p.contact || null, p_hide_name: !!p.hide_name,
-        p_website: p.website || null, p_expires_at: p.expires_at || null,
+        p_website: p.website || null, p_expires_at: p.expires_at || null, p_event_date: p.event_date || null,
       }),
       setStatus: (id, status) => rpc("set_post_status", { p_id: id, p_status: status }),
       setTestimony: (id, text, share) => rpc("set_testimony", { p_id: id, p_text: text || "", p_share: !!share }),
@@ -174,6 +175,7 @@
       { ...base, id: "d6", kind: "need", title: "Sample: Meals for a family with a new baby", body: "Two dinners a week for the next three weeks would be a huge help.", category: "Meals", area: "Northside", contact: "555-0108", author_name: "Sample member", status: "closed", created_at: iso(12 * DAY), expires_at: iso(-48 * DAY), testimony: "Sample: Six families signed up within a day, and we had dinners covered for all three weeks. Thank you for loving us so well!", testimony_status: "approved", testimony_share: true },
       { ...base, id: "d7", kind: "skill", title: "Sample: Lawn care and leaf cleanup", body: "Weekly mowing, fall cleanup, small landscaping jobs.", trade: "Landscaping & lawn", area: "Westside", contact: "555-0190", author_name: "Sample tradesperson", status: "pending", created_at: iso(2 * 3600e3), expires_at: iso(-60 * DAY) },
       { ...base, id: "d9", kind: "free", title: "Sample: Crib and changing table", body: "Solid wood, gently used. You pick up; I can help load.", category: "Porch pickup · Exchange at church", area: "Southside", contact: "555-0123", author_name: "Sample member", status: "open", created_at: iso(8 * 3600e3), expires_at: iso(-59 * DAY) },
+      { ...base, id: "d10", kind: "event", title: "Sample: Fall Harvest Potluck", body: "Bring a dish to share! Fellowship hall, 5:30–7:30 pm. Everyone is welcome, including friends and neighbors.", event_date: localDate(new Date(now + 9 * DAY)), website: "https://www.example.com/potluck", area: "Sample host", contact: "555-0150", author_name: "Sample member", status: "open", created_at: iso(2 * DAY), expires_at: iso(-10 * DAY) },
       { ...base, id: "d8", kind: "need", title: "Sample: Cash needed fast, message me", body: "Send gift cards and I’ll pay you back double.", category: "Financial help", contact: "scam@example.com", author_name: "Sample account", status: "open", created_at: iso(5 * 3600e3), expires_at: iso(-60 * DAY), report_count: 2 },
     ];
     const reasons = { d8: [{ reason: "Looks like a scam asking for gift cards.", created_at: iso(3600e3) }, { reason: "Not a real need.", created_at: iso(2 * 3600e3) }] };
@@ -186,6 +188,7 @@
         ...r,
         author_name: r.hide_name && !r.is_mine && !me.isModerator ? null : (r.is_mine ? me.displayName : r.author_name),
         contact: me.signedIn ? r.contact : null,
+        area: r.kind === "event" && !me.signedIn ? null : r.area,
         report_count: me.isModerator ? r.report_count : null,
         i_prayed: me.signedIn && r.i_prayed,
       }));
@@ -476,6 +479,11 @@
     $("#f-body").placeholder = KIND[kind].bodyPh || "";
     $("#submitBtn").textContent = KIND[kind].submit;
     $("#postMsg").textContent = "";
+    // Contact and link are optional for events; the link field is a business website for trades.
+    $("#l-contact").replaceChildren(...(kind === "event" ? ["Contact info ", h("span", { class: "hint", text: "(optional)" })] : ["How to reach you"]));
+    $("#l-website").replaceChildren(kind === "event" ? "Link for more details" : "Business website", " ", h("span", { class: "hint", text: "(optional)" }));
+    $("#f-website").placeholder = kind === "event" ? "e.g. www.follow-church.com/events" : "e.g. www.ruizelectric.com";
+    $("#postFootHint").textContent = "A moderator reviews each post before it appears on the board. " + (kind === "event" ? "Events come down after the event date." : "Posts stay up for 60 days, and you can renew them.");
   }
   function openComposer() {
     if (!S.me.signedIn) return openPanel("signInPanel");
@@ -484,6 +492,8 @@
     // The removal date can be any day from today up to the usual 60 days.
     $("#f-expires").min = localDate(new Date());
     $("#f-expires").max = localDate(new Date(Date.now() + 60 * DAY));
+    $("#f-event-date").min = localDate(new Date());
+    $("#f-event-date").max = localDate(new Date(Date.now() + 365 * DAY));
     openPanel("composer");
   }
   // A Date as YYYY-MM-DD in the viewer's time zone (the format date inputs use).
@@ -533,6 +543,19 @@
         if (!p.website) return fail("That website address doesn’t look right. Try something like www.yourbusiness.com.", "#f-website");
       }
     }
+    if (kind === "event") {
+      const day = v("#f-event-date");
+      if (!day) return fail("Choose the date of the event.", "#f-event-date");
+      if (day < $("#f-event-date").min || day > $("#f-event-date").max) return fail("Choose an event date between today and one year from now.", "#f-event-date");
+      // The post comes down at the end of the event day.
+      // The contact person is saved in the area field, which events don't otherwise use.
+      Object.assign(p, { event_date: day, expires_at: new Date(day + "T23:59:59").toISOString(), area: v("#f-person"), contact: v("#f-contact") });
+      const site = v("#f-website");
+      if (site) {
+        p.website = normalizeWebsite(site);
+        if (!p.website) return fail("That link doesn’t look right. Try something like www.follow-church.com/events.", "#f-website");
+      }
+    }
     $("#submitBtn").disabled = true;
     const ok = await act(() => api.create(p), S.me.isModerator ? "Posted to the board." : "Thanks! A moderator will review your post before it appears.");
     $("#submitBtn").disabled = false;
@@ -561,6 +584,7 @@
       need: openRows.filter((r) => r.kind === "need").length,
       skill: openRows.filter((r) => r.kind === "skill").length,
       free: openRows.filter((r) => r.kind === "free").length,
+      event: openRows.filter((r) => r.kind === "event").length,
       mine: rows.filter((r) => r.is_mine).length,
       review: rows.filter(needsReview).length,
     };
@@ -579,7 +603,8 @@
         h("b", { text: count.prayer }), ` prayer request${count.prayer === 1 ? "" : "s"} · `,
         h("b", { text: count.need }), ` open need${count.need === 1 ? "" : "s"} · `,
         h("b", { text: count.skill }), ` trade${count.skill === 1 ? "" : "s"} listed · `,
-        h("b", { text: count.free }), ` free item${count.free === 1 ? "" : "s"}`
+        h("b", { text: count.free }), ` free item${count.free === 1 ? "" : "s"} · `,
+        h("b", { text: count.event }), ` upcoming event${count.event === 1 ? "" : "s"}`
       );
     }
 
@@ -589,7 +614,8 @@
     else list = rows.filter((r) => onBoard(r) && (S.showClosed || r.status === "open" || hasTestimony(r)) && (S.tab === "all" || r.kind === S.tab) && (S.tab !== "skill" || !S.trade || r.trade === S.trade));
     if (S.q) list = list.filter((r) => [r.title, r.body, r.trade, r.category, r.area, r.testimony].some((f) => f && f.toLowerCase().includes(S.q)));
     const rank = (r) => (r.status === "closed" ? 1 : 0);
-    list.sort((a, b) => rank(a) - rank(b) || String(b.created_at).localeCompare(String(a.created_at)));
+    if (S.tab === "event") list.sort((a, b) => rank(a) - rank(b) || String(a.event_date).localeCompare(String(b.event_date)));
+    else list.sort((a, b) => rank(a) - rank(b) || String(b.created_at).localeCompare(String(a.created_at)));
 
     renderReviewTools();
     const board = $("#board");
@@ -601,6 +627,7 @@
         need: ["No open needs right now", "Need a meal, a ride or a hand with something? Post it here."],
         skill: ["No trades listed yet", "Electrician, painter, tutor, mechanic? List your work so members of the Follow Church community can hire you."],
         free: ["Nothing free right now", "Have a crib, a couch or a box of books you no longer need? Give it to a member of the Follow Church community here."],
+        event: ["No upcoming events", "Hosting a gathering, service project or community event? Share it here."],
         mine: ["You haven’t posted yet", "Your posts show up here, including ones waiting for review."],
         review: ["Nothing to review", "New posts, testimonies and reported posts will show up here."],
       };
@@ -690,7 +717,8 @@
     else if (r.hide_name && !r.author_name) who = "A member of the Follow Church community";
     else who = (r.author_name || "A member of the Follow Church community") + (r.hide_name ? " (name hidden from others)" : "");
 
-    const facts = (r.kind === "free" && r.category ? [...r.category.split(" · "), r.area] : [r.trade, r.category, r.area, r.rate]).filter(Boolean);
+    const facts = (r.kind === "event" ? [] : r.kind === "free" && r.category ? [...r.category.split(" · "), r.area] : [r.trade, r.category, r.area, r.rate]).filter(Boolean);
+    if (r.kind === "event" && r.event_date) facts.unshift(new Date(r.event_date + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }));
     // An author-picked removal date (sooner than the usual 60 days) is shown so people know how long it's up.
     if ((r.kind === "need" || r.kind === "free") && r.status === "open" && !r.expired
         && new Date(r.expires_at) - new Date(r.created_at) < 59.5 * DAY) {
@@ -702,8 +730,8 @@
       h("h3", { text: r.title }),
       r.body ? h("p", { class: "body", text: r.body }) : null,
       facts.length ? h("div", { class: "facts" }, facts.map((f) => h("span", { class: "fact", text: f }))) : null,
-      r.kind === "skill" && r.website && /^https?:\/\//i.test(r.website)
-        ? h("a", { class: "site-link", href: r.website, target: "_blank", rel: "noopener noreferrer nofollow ugc", text: prettyWebsite(r.website) })
+      (r.kind === "skill" || r.kind === "event") && r.website && /^https?:\/\//i.test(r.website)
+        ? h("a", { class: "site-link", href: r.website, target: "_blank", rel: "noopener noreferrer nofollow ugc", text: (r.kind === "event" ? "More details: " : "") + prettyWebsite(r.website) })
         : null,
       h("div", { class: "byline", text: who })
     );
@@ -736,6 +764,13 @@
         left.push(h("button", { class: "btn small", type: "button", onclick: () => openPanel("signInPanel"), text: "🙏 Sign in to pray" }));
       }
       left.push(h("span", { class: "when", text: r.prayer_count ? `${r.prayer_count} praying` : "Be the first to pray" }));
+    } else if (r.kind === "event" && (r.contact || r.area)) {
+      left.push(h("span", { class: "when", text: "Contact:" }));
+      if (r.area) left.push(h("span", { class: "contact-person", text: r.area }));
+      if (r.contact) {
+        const c = h("span", { class: "contact-text", text: r.contact });
+        left.push(c, h("button", { class: "btn small quiet", type: "button", onclick: () => copyContact(r.contact, c), text: "Copy" }));
+      }
     } else if (r.contact) {
       const c = h("span", { class: "contact-text", text: r.contact });
       left.push(c, h("button", { class: "btn small quiet", type: "button", onclick: () => copyContact(r.contact, c), text: "Copy" }));
@@ -759,7 +794,7 @@
       if (r.status === "open" || r.status === "closed") actions.push(h("button", { class: "btn small quiet", type: "button", onclick: async () => { if (await act(() => api.setStatus(r.id, closed ? "open" : "closed"), closed ? "Reopened." : K.closed + ".") && closing) { S.testifying = r.id; render(); } }, text: closed ? K.reopen : K.close }));
       if (canTestify && S.testifying !== r.id) actions.push(h("button", { class: "btn small quiet", type: "button", onclick: () => { S.testifying = r.id; render(); }, text: r.testimony ? "Edit testimony" : "Share a testimony" }));
       const daysLeft = (new Date(r.expires_at) - Date.now()) / DAY;
-      if (r.status !== "rejected" && (r.expired || daysLeft < 14)) actions.push(h("button", { class: "btn small quiet", type: "button", onclick: () => act(() => api.renew(r.id), "Renewed for 60 days."), text: "Renew" }));
+      if (r.kind !== "event" && r.status !== "rejected" && (r.expired || daysLeft < 14)) actions.push(h("button", { class: "btn small quiet", type: "button", onclick: () => act(() => api.renew(r.id), "Renewed for 60 days."), text: "Renew" }));
       actions.push(confirmButton("Remove", "Confirm remove", "danger", () => act(() => api.remove(r.id), "Post removed.")));
     } else if (me.signedIn) {
       if (me.isModerator) actions.push(confirmButton("Remove", "Confirm remove", "danger", () => act(() => api.remove(r.id), "Post removed.")));

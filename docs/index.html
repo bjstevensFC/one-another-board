@@ -110,6 +110,7 @@
       <button type="button" class="kind-opt" data-kind="need" aria-pressed="false"><b>A need</b><span>Meals, rides, repairs, a helping hand</span></button>
       <button type="button" class="kind-opt" data-kind="skill" aria-pressed="false"><b>Trade for hire</b><span>Offer skilled work to the community</span></button>
       <button type="button" class="kind-opt" data-kind="free" aria-pressed="false"><b>Freecycle</b><span>Give away things you no longer need</span></button>
+      <button type="button" class="kind-opt" data-kind="event" aria-pressed="false"><b>Community event</b><span>Invite people to a gathering or event</span></button>
     </div>
     <form id="postForm" novalidate>
       <div class="stack">
@@ -148,11 +149,19 @@
             <label for="f-rate">Rates <span class="hint">(optional)</span></label>
             <input id="f-rate" maxlength="60" placeholder="e.g. $45/hr, free estimates">
           </div>
-          <div class="field" data-for="skill">
-            <label for="f-website">Business website <span class="hint">(optional)</span></label>
+          <div class="field" data-for="event">
+            <label for="f-event-date">Event date</label>
+            <input id="f-event-date" type="date">
+          </div>
+          <div class="field" data-for="skill event">
+            <label for="f-website" id="l-website">Business website <span class="hint">(optional)</span></label>
             <input id="f-website" type="url" inputmode="url" maxlength="200" autocomplete="url" placeholder="e.g. www.ruizelectric.com">
           </div>
-          <div class="field" data-for="need skill free">
+          <div class="field" data-for="event">
+            <label for="f-person">Contact person <span class="hint">(optional)</span></label>
+            <input id="f-person" maxlength="80" autocomplete="off" placeholder="e.g. Pastor Dan">
+          </div>
+          <div class="field" data-for="need skill free event">
             <label for="f-contact" id="l-contact">How to reach you</label>
             <input id="f-contact" maxlength="80" placeholder="Phone or email">
             <span class="hint">Only people who are signed in can see this.</span>
@@ -168,7 +177,7 @@
           <details class="ack-guide"><summary>Read “How this board works”</summary><div class="ack-list"></div></details>
           <label class="check"><input type="checkbox" id="ackPost"> I have read and agree to “How this board works.”</label>
         </div>
-        <p class="hint">A moderator reviews each post before it appears on the board. Posts stay up for 60 days, and you can renew them.</p>
+        <p class="hint" id="postFootHint">A moderator reviews each post before it appears on the board. Posts stay up for 60 days, and you can renew them.</p>
         <div class="form-actions">
           <span class="form-msg" id="postMsg" role="alert"></span>
           <div class="btn-row">
@@ -187,6 +196,7 @@
       <button type="button" class="tab" data-tab="need" aria-pressed="false">Needs <span class="n" data-n="need"></span></button>
       <button type="button" class="tab" data-tab="skill" aria-pressed="false">Trades for hire <span class="n" data-n="skill"></span></button>
       <button type="button" class="tab" data-tab="free" aria-pressed="false">Freecycle <span class="n" data-n="free"></span></button>
+      <button type="button" class="tab" data-tab="event" aria-pressed="false">Community Events <span class="n" data-n="event"></span></button>
       <button type="button" class="tab" data-tab="mine" aria-pressed="false" hidden>My posts <span class="n" data-n="mine"></span></button>
       <button type="button" class="tab review" data-tab="review" aria-pressed="false" hidden>Review <span class="n" data-n="review"></span></button>
     </div>

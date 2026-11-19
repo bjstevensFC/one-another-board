@@ -1,6 +1,6 @@
 # "One Another" Board
 
-A public community bulletin board for prayer requests, needs, and trades for hire.
+A public community bulletin board for prayer requests, needs, trades for hire, Freecycle items and community events.
 
 - **Anyone** can read the board.
 - People **sign in with an email and password** (or an emailed sign-in link) to post, pray along, report a post, or see contact details. Passwords need 8+ characters with letters and numbers; "Forgot password?" emails a reset link.
@@ -8,6 +8,7 @@ A public community bulletin board for prayer requests, needs, and trades for hir
 - **Moderators approve** every new post before it appears, and see reported posts in a Review tab.
 - Posts **expire after 60 days**. Authors can renew them, mark them answered or met, or remove them.
 - **Needs and Freecycle posts can come down sooner.** The author can pick a date within the next 60 days, and the post shows "Open until …" or "Available until …" on the board. (See `supabase/updates/2026-11-19-removal-date.sql`.)
+- **Community Events** have a name, description and event date, plus an optional link, contact person and contact info (the contact person and info are only shown to signed-in people). The Community Events tab lists the soonest events first, and each event comes down after its date. (See `supabase/updates/2026-11-19-community-events.sql`, which runs in two steps.)
 - **Testimonies.** When someone marks a prayer answered or a need met, they are invited to share a testimony, with a checkbox to let Follow Church share it publicly (in a service, newsletter or social media post). A moderator approves each testimony on the Review tab before it appears; moderators can see on the card whether sharing is OK. Answered prayers and met needs with an approved testimony stay on the board. (See `supabase/updates/2026-11-19-testimonies.sql`.)
 - Prayer requests can hide the poster's name from other readers. Moderators can still see it.
 
