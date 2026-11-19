@@ -171,7 +171,7 @@
       { ...base, id: "d5", kind: "skill", title: "Sample: Math and reading tutor", body: "Retired teacher. Grades 2–8, in person or online.", trade: "Tutoring", area: "Online or church library", rate: "$25/hr", contact: "555-0177", author_name: "Sample tradesperson", status: "open", created_at: iso(6 * DAY), expires_at: iso(-54 * DAY) },
       { ...base, id: "d6", kind: "need", title: "Sample: Meals for a family with a new baby", body: "Two dinners a week for the next three weeks would be a huge help.", category: "Meals", area: "Northside", contact: "555-0108", author_name: "Sample member", status: "closed", created_at: iso(12 * DAY), expires_at: iso(-48 * DAY) },
       { ...base, id: "d7", kind: "skill", title: "Sample: Lawn care and leaf cleanup", body: "Weekly mowing, fall cleanup, small landscaping jobs.", trade: "Landscaping & lawn", area: "Westside", contact: "555-0190", author_name: "Sample tradesperson", status: "pending", created_at: iso(2 * 3600e3), expires_at: iso(-60 * DAY) },
-      { ...base, id: "d9", kind: "free", title: "Sample: Crib and changing table", body: "Solid wood, gently used. You pick up; I can help load.", area: "Pick up at church after Sunday service, or text me to set a time.", contact: "555-0123", author_name: "Sample member", status: "open", created_at: iso(8 * 3600e3), expires_at: iso(-59 * DAY) },
+      { ...base, id: "d9", kind: "free", title: "Sample: Crib and changing table", body: "Solid wood, gently used. You pick up; I can help load.", category: "Porch pickup · Exchange at church", area: "Southside", contact: "555-0123", author_name: "Sample member", status: "open", created_at: iso(8 * 3600e3), expires_at: iso(-59 * DAY) },
       { ...base, id: "d8", kind: "need", title: "Sample: Cash needed fast, message me", body: "Send gift cards and I’ll pay you back double.", category: "Financial help", contact: "scam@example.com", author_name: "Sample account", status: "open", created_at: iso(5 * 3600e3), expires_at: iso(-60 * DAY), report_count: 2 },
     ];
     const reasons = { d8: [{ reason: "Looks like a scam asking for gift cards.", created_at: iso(3600e3) }, { reason: "Not a real need.", created_at: iso(2 * 3600e3) }] };
@@ -474,7 +474,12 @@
     if (!p.title) return fail(kind === "skill" ? "Add your business or name." : "Add a short title.", "#f-title");
     if (kind === "prayer") p.hide_name = $("#f-hide").checked;
     if (kind === "need") Object.assign(p, { category: v("#f-category"), area: v("#f-area"), contact: v("#f-contact") });
-    if (kind === "free") Object.assign(p, { area: v("#f-pickup"), contact: v("#f-contact") });
+    if (kind === "free") {
+      // Pickup options are saved as a short label, e.g. "Porch pickup · Exchange at church".
+      const options = [$("#f-porch").checked && "Porch pickup", $("#f-church").checked && "Exchange at church"].filter(Boolean);
+      if (!options.length) return fail("Choose porch pickup, exchange at church, or both.", "#f-porch");
+      Object.assign(p, { category: options.join(" · "), area: v("#f-area"), contact: v("#f-contact") });
+    }
     if (kind === "skill") {
       Object.assign(p, { trade: v("#f-trade"), area: v("#f-area"), rate: v("#f-rate"), contact: v("#f-contact") });
       if (!p.trade) return fail("Choose the trade you offer.", "#f-trade");
@@ -639,13 +644,12 @@
     else if (r.hide_name && !r.author_name) who = "A member of our community";
     else who = (r.author_name || "A neighbor") + (r.hide_name ? " (name hidden from others)" : "");
 
-    const facts = (r.kind === "free" ? [r.category] : [r.trade, r.category, r.area, r.rate]).filter(Boolean);
+    const facts = (r.kind === "free" && r.category ? [...r.category.split(" · "), r.area] : [r.trade, r.category, r.area, r.rate]).filter(Boolean);
     const main = h("div", { class: "main" },
       h("div", { class: "eyebrow" }, h("span", { class: "kind-label", text: K.label }), stamp),
       h("h3", { text: r.title }),
       r.body ? h("p", { class: "body", text: r.body }) : null,
       facts.length ? h("div", { class: "facts" }, facts.map((f) => h("span", { class: "fact", text: f }))) : null,
-      r.kind === "free" && r.area ? h("p", { class: "pickup" }, h("b", { text: "Pickup: " }), r.area) : null,
       r.kind === "skill" && r.website && /^https?:\/\//i.test(r.website)
         ? h("a", { class: "site-link", href: r.website, target: "_blank", rel: "noopener noreferrer nofollow ugc", text: prettyWebsite(r.website) })
         : null,

@@ -115,12 +115,15 @@
             <label for="f-category">Kind of help</label>
             <select id="f-category"></select>
           </div>
-          <div class="field wide" data-for="free">
-            <label for="f-pickup">Pickup instructions</label>
-            <textarea id="f-pickup" maxlength="200" rows="2" placeholder="e.g. Pick up at church after Sunday service, or message me to set a time"></textarea>
-            <span class="hint">Anyone can see this, even if they aren’t signed in. Share your home address privately instead.</span>
-          </div>
-          <div class="field" data-for="need skill">
+          <fieldset class="field wide check-group" data-for="free">
+            <legend>Pickup options</legend>
+            <div class="check-row">
+              <label class="check"><input type="checkbox" id="f-porch"> Porch pickup</label>
+              <label class="check"><input type="checkbox" id="f-church"> Exchange at church</label>
+            </div>
+            <span class="hint">Choose one or both. Share your address privately with whoever claims it.</span>
+          </fieldset>
+          <div class="field" data-for="need skill free">
             <label for="f-area" id="l-area">Area or neighborhood</label>
             <input id="f-area" maxlength="60" placeholder="e.g. Northside, within 20 miles">
           </div>
