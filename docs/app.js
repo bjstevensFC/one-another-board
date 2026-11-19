@@ -145,7 +145,7 @@
       create: (p) => rpc("create_post", {
         p_kind: p.kind, p_title: p.title, p_body: p.body || "", p_category: p.category || null, p_trade: p.trade || null,
         p_area: p.area || null, p_rate: p.rate || null, p_contact: p.contact || null, p_hide_name: !!p.hide_name,
-        p_website: p.website || null,
+        p_website: p.website || null, p_expires_at: p.expires_at || null,
       }),
       setStatus: (id, status) => rpc("set_post_status", { p_id: id, p_status: status }),
       setTestimony: (id, text, share) => rpc("set_testimony", { p_id: id, p_text: text || "", p_share: !!share }),
@@ -226,7 +226,7 @@
       async setName(name) { me.displayName = name.trim(); return delay(); },
       list: () => delay(view()),
       async create(p) {
-        rows.unshift({ ...base, ...p, id: "n" + (++seq), is_mine: true, status: me.isModerator ? "open" : "pending", created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 60 * DAY).toISOString() });
+        rows.unshift({ ...base, ...p, id: "n" + (++seq), is_mine: true, status: me.isModerator ? "open" : "pending", created_at: new Date().toISOString(), expires_at: p.expires_at || new Date(Date.now() + 60 * DAY).toISOString() });
         return delay();
       },
       async setStatus(id, status) { const r = find(id); r.status = status; if (status === "open") r.report_count = 0; return delay(); },
@@ -482,7 +482,21 @@
     if (!S.me.signedIn) return openPanel("signInPanel");
     if (!S.me.displayName) return openPanel("namePanel");
     setKind(KIND[S.tab] ? S.tab : S.kind);
+    // The removal date can be any day from today up to the usual 60 days.
+    $("#f-expires").min = localDate(new Date());
+    $("#f-expires").max = localDate(new Date(Date.now() + 60 * DAY));
     openPanel("composer");
+  }
+  // A Date as YYYY-MM-DD in the viewer's time zone (the format date inputs use).
+  function localDate(d) {
+    return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
+  }
+  // The removal date the author picked, as the end of that day in their time zone; null if blank.
+  function removalDate() {
+    const val = $("#f-expires").value;
+    if (!val) return { at: null };
+    if (val < $("#f-expires").min || val > $("#f-expires").max) return { error: "Choose a date between today and 60 days from now, or leave it blank." };
+    return { at: new Date(val + "T23:59:59").toISOString() };
   }
   document.querySelectorAll(".kind-opt").forEach((b) => b.addEventListener("click", () => setKind(b.dataset.kind)));
 
@@ -501,6 +515,11 @@
       if (!options.length) return fail("Choose porch pickup, exchange at church, or both.", "#f-porch");
       if (!v("#f-contact")) return fail("Add a phone number or email so people can reach you about this item.", "#f-contact");
       Object.assign(p, { category: options.join(" · "), area: v("#f-area"), contact: v("#f-contact") });
+    }
+    if (kind === "need" || kind === "free") {
+      const rd = removalDate();
+      if (rd.error) return fail(rd.error, "#f-expires");
+      p.expires_at = rd.at;
     }
     if (kind === "skill") {
       Object.assign(p, { trade: v("#f-trade"), area: v("#f-area"), rate: v("#f-rate"), contact: v("#f-contact") });
@@ -670,6 +689,12 @@
     else who = (r.author_name || "A member of the Follow Church community") + (r.hide_name ? " (name hidden from others)" : "");
 
     const facts = (r.kind === "free" && r.category ? [...r.category.split(" · "), r.area] : [r.trade, r.category, r.area, r.rate]).filter(Boolean);
+    // An author-picked removal date (sooner than the usual 60 days) is shown so people know how long it's up.
+    if ((r.kind === "need" || r.kind === "free") && r.status === "open" && !r.expired
+        && new Date(r.expires_at) - new Date(r.created_at) < 59.5 * DAY) {
+      const day = new Date(r.expires_at).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      facts.push((r.kind === "free" ? "Available until " : "Open until ") + day);
+    }
     const main = h("div", { class: "main" },
       h("div", { class: "eyebrow" }, h("span", { class: "kind-label", text: K.label }), stamp),
       h("h3", { text: r.title }),

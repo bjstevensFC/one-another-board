@@ -165,17 +165,19 @@ end $$;
 
 -- The older version without a website (removed so the two don't clash)
 drop function if exists public.create_post(text, text, text, text, text, text, text, text, boolean);
+drop function if exists public.create_post(text, text, text, text, text, text, text, text, boolean, text);
 
 create or replace function public.create_post(
   p_kind text, p_title text, p_body text default '',
   p_category text default null, p_trade text default null, p_area text default null,
   p_rate text default null, p_contact text default null, p_hide_name boolean default false,
-  p_website text default null
+  p_website text default null, p_expires_at timestamptz default null
 ) returns uuid language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := public.require_user();
   new_id uuid;
   recent int;
+  expires timestamptz := now() + interval '60 days';
 begin
   if not exists (select 1 from public.profiles where id = uid) then
     raise exception 'Add your name before posting.';
@@ -196,7 +198,15 @@ begin
     raise exception 'Enter a full website address starting with https://';
   end if;
 
-  insert into public.posts (author_id, kind, title, body, category, trade, area, rate, contact, website, hide_name, status)
+  -- Needs and Freecycle posts can come down sooner than 60 days, on a date the author picks.
+  if p_kind in ('need', 'free') and p_expires_at is not null then
+    if p_expires_at <= now() then
+      raise exception 'Choose a removal date that hasn''t passed yet.';
+    end if;
+    expires := least(p_expires_at, expires);
+  end if;
+
+  insert into public.posts (author_id, kind, title, body, category, trade, area, rate, contact, website, hide_name, status, expires_at)
   values (
     uid, p_kind::public.post_kind, btrim(p_title), coalesce(btrim(p_body), ''),
     case when p_kind in ('need', 'free') then public.clean(p_category) end,
@@ -206,7 +216,8 @@ begin
     case when p_kind <> 'prayer' then public.clean(p_contact) end,
     case when p_kind = 'skill' then public.clean(p_website) end,
     case when p_kind = 'prayer' then coalesce(p_hide_name, false) else false end,
-    case when public.is_moderator() then 'open'::public.post_status else 'pending'::public.post_status end
+    case when public.is_moderator() then 'open'::public.post_status else 'pending'::public.post_status end,
+    expires
   ) returning id into new_id;
   return new_id;
 end $$;
@@ -330,7 +341,7 @@ end $$;
 revoke execute on all functions in schema public from public, anon;
 grant execute on function
   public.get_me(), public.set_display_name(text),
-  public.create_post(text, text, text, text, text, text, text, text, boolean, text),
+  public.create_post(text, text, text, text, text, text, text, text, boolean, text, timestamptz),
   public.set_post_status(uuid, text), public.renew_post(uuid), public.delete_post(uuid),
   public.toggle_prayer(uuid), public.report_post(uuid, text), public.list_reports(uuid),
   public.set_testimony(uuid, text, boolean), public.review_testimony(uuid, boolean)
