@@ -282,10 +282,10 @@ fieldset.check-group legend { font-weight: 700; font-size: 14px; padding: 0; mar
 .empty p { margin: 0; max-width: 52ch; }
 
 details.guide {
-  font-size: 17px; color: var(--ink); background: var(--surface);
+  font-size: 16px; color: var(--ink); background: var(--surface);
   border: 1.5px solid var(--line-strong); border-left: 5px solid var(--link); border-radius: 14px; padding: 14px 18px;
 }
-details.guide summary { cursor: pointer; font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--heading); }
+details.guide summary { cursor: pointer; font-family: var(--font-display); font-size: 28px; line-height: 1.2; font-weight: 700; color: var(--heading); }
 details.guide summary::marker { color: var(--link); }
 details.guide ul { margin: 12px 0 2px; padding-left: 22px; display: grid; gap: 8px; max-width: 80ch; line-height: 1.5; }
 
