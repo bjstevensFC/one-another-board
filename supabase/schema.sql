@@ -176,6 +176,9 @@ begin
   if p_kind = 'skill' and (public.clean(p_trade) is null or public.clean(p_contact) is null) then
     raise exception 'Trade listings need a trade and a way to reach you.';
   end if;
+  if p_kind = 'free' and public.clean(p_contact) is null then
+    raise exception 'Add a phone number or email so people can reach you about this item.';
+  end if;
 
   if p_kind = 'skill' and public.clean(p_website) is not null
      and (char_length(btrim(p_website)) > 200 or btrim(p_website) !~* '^https?://[^[:space:]]+$') then

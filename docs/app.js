@@ -454,7 +454,7 @@
     $("#f-title").placeholder = KIND[kind].titlePh;
     $("#l-body").textContent = KIND[kind].bodyLabel;
     $("#f-body").placeholder = KIND[kind].bodyPh || "";
-    $("#l-contact").textContent = kind === "skill" ? "How to reach you" : "How to reach you (optional)";
+    $("#l-contact").textContent = kind === "skill" || kind === "free" ? "How to reach you" : "How to reach you (optional)";
     $("#submitBtn").textContent = KIND[kind].submit;
     $("#postMsg").textContent = "";
   }
@@ -478,6 +478,7 @@
       // Pickup options are saved as a short label, e.g. "Porch pickup · Exchange at church".
       const options = [$("#f-porch").checked && "Porch pickup", $("#f-church").checked && "Exchange at church"].filter(Boolean);
       if (!options.length) return fail("Choose porch pickup, exchange at church, or both.", "#f-porch");
+      if (!v("#f-contact")) return fail("Add a phone number or email so people can reach you about this item.", "#f-contact");
       Object.assign(p, { category: options.join(" · "), area: v("#f-area"), contact: v("#f-contact") });
     }
     if (kind === "skill") {
