@@ -25,7 +25,7 @@ create table if not exists public.moderators (
 );
 
 do $$ begin
-  create type public.post_kind as enum ('prayer', 'need', 'skill');
+  create type public.post_kind as enum ('prayer', 'need', 'skill', 'free');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
@@ -185,7 +185,7 @@ begin
   insert into public.posts (author_id, kind, title, body, category, trade, area, rate, contact, website, hide_name, status)
   values (
     uid, p_kind::public.post_kind, btrim(p_title), coalesce(btrim(p_body), ''),
-    case when p_kind = 'need'  then public.clean(p_category) end,
+    case when p_kind in ('need', 'free') then public.clean(p_category) end,
     case when p_kind = 'skill' then public.clean(p_trade) end,
     case when p_kind <> 'prayer' then public.clean(p_area) end,
     case when p_kind = 'skill' then public.clean(p_rate) end,

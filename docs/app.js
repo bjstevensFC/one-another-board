@@ -10,7 +10,10 @@
     prayer: { label: "Prayer request", closed: "Answered", close: "Mark answered", reopen: "Reopen", titleLabel: "What can we pray for?", bodyLabel: "Details", titlePh: "e.g. Healing for my mom after surgery", submit: "Share request" },
     need:   { label: "Need", closed: "Met", close: "Mark met", reopen: "Reopen", titleLabel: "What do you need?", bodyLabel: "Details", titlePh: "e.g. Rides to chemo on Tuesdays", submit: "Post need" },
     skill:  { label: "Trade for hire", closed: "Not taking work", close: "Pause listing", reopen: "Resume listing", titleLabel: "Your business or name", bodyLabel: "What you do", titlePh: "e.g. Ruiz Family Electric", submit: "List my trade" },
+    free:   { label: "Freecycle", closed: "Claimed", close: "Mark claimed", reopen: "Available again", titleLabel: "What are you giving away?", bodyLabel: "Details", titlePh: "e.g. Kids’ bike, good condition", submit: "Post item" },
   };
+  const FREE_CATEGORIES = ["Furniture","Kids & baby","Clothing & shoes","Kitchen & household","Electronics","Tools & garden","Books & games","Sports & outdoors","Other"];
+  const BOARD_TABS = ["all", "prayer", "need", "skill", "free"];
   const DAY = 86400000;
 
   // ---------- Small helpers ----------
@@ -169,6 +172,7 @@
       { ...base, id: "d5", kind: "skill", title: "Sample: Math and reading tutor", body: "Retired teacher. Grades 2–8, in person or online.", trade: "Tutoring", area: "Online or church library", rate: "$25/hr", contact: "555-0177", author_name: "Sample tradesperson", status: "open", created_at: iso(6 * DAY), expires_at: iso(-54 * DAY) },
       { ...base, id: "d6", kind: "need", title: "Sample: Meals for a family with a new baby", body: "Two dinners a week for the next three weeks would be a huge help.", category: "Meals", area: "Northside", contact: "555-0108", author_name: "Sample member", status: "closed", created_at: iso(12 * DAY), expires_at: iso(-48 * DAY) },
       { ...base, id: "d7", kind: "skill", title: "Sample: Lawn care and leaf cleanup", body: "Weekly mowing, fall cleanup, small landscaping jobs.", trade: "Landscaping & lawn", area: "Westside", contact: "555-0190", author_name: "Sample tradesperson", status: "pending", created_at: iso(2 * 3600e3), expires_at: iso(-60 * DAY) },
+      { ...base, id: "d9", kind: "free", title: "Sample: Crib and changing table", body: "Solid wood, gently used. You pick up; I can help load.", category: "Kids & baby", area: "Southside", contact: "555-0123", author_name: "Sample member", status: "open", created_at: iso(8 * 3600e3), expires_at: iso(-59 * DAY) },
       { ...base, id: "d8", kind: "need", title: "Sample: Cash needed fast, message me", body: "Send gift cards and I’ll pay you back double.", category: "Financial help", contact: "scam@example.com", author_name: "Sample account", status: "open", created_at: iso(5 * 3600e3), expires_at: iso(-60 * DAY), report_count: 2 },
     ];
     const reasons = { d8: [{ reason: "Looks like a scam asking for gift cards.", created_at: iso(3600e3) }, { reason: "Not a real need.", created_at: iso(2 * 3600e3) }] };
@@ -242,7 +246,7 @@
   const S = { me: { signedIn: false }, rows: [], loaded: false, tab: "all", q: "", trade: "", showClosed: false, kind: "prayer", reporting: null, reasons: {} };
   try {
     const saved = JSON.parse(localStorage.getItem("oab-view") || "{}");
-    if (["all", "prayer", "need", "skill"].includes(saved.tab)) S.tab = saved.tab;
+    if (BOARD_TABS.includes(saved.tab)) S.tab = saved.tab;
     S.showClosed = !!saved.showClosed;
   } catch (e) {}
   // Links from review alert emails end in #review. Remember that through a sign-in, too,
@@ -271,6 +275,7 @@
 
   $("#f-trade").append(h("option", { value: "", text: "Choose a trade" }), ...TRADES.map((t) => h("option", { value: t, text: t })));
   $("#f-category").append(...CATEGORIES.map((t) => h("option", { value: t, text: t })));
+  $("#f-free-category").append(...FREE_CATEGORIES.map((t) => h("option", { value: t, text: t })));
   $("#tradeFilter").append(h("option", { value: "", text: "All trades" }), ...TRADES.map((t) => h("option", { value: t, text: t })));
   $("#showClosed").checked = S.showClosed;
 
@@ -278,7 +283,7 @@
     try {
       const [me, rows] = await Promise.all([api.me(), api.list()]);
       S.me = me; S.rows = rows; S.loaded = true;
-      if (!["all", "prayer", "need", "skill"].includes(S.tab) && !(S.tab === "mine" && me.signedIn) && !(S.tab === "review" && me.isModerator)) S.tab = "all";
+      if (!BOARD_TABS.includes(S.tab) && !(S.tab === "mine" && me.signedIn) && !(S.tab === "review" && me.isModerator)) S.tab = "all";
       applyReviewIntent(me);
       showError("");
     } catch (e) {
@@ -444,7 +449,8 @@
     $("#l-title").textContent = KIND[kind].titleLabel;
     $("#f-title").placeholder = KIND[kind].titlePh;
     $("#l-body").textContent = KIND[kind].bodyLabel;
-    $("#l-contact").textContent = kind === "need" ? "How to reach you (optional)" : "How to reach you";
+    $("#l-contact").textContent = kind === "skill" ? "How to reach you" : "How to reach you (optional)";
+    $("#l-area").textContent = kind === "free" ? "Pickup area" : "Area or neighborhood";
     $("#submitBtn").textContent = KIND[kind].submit;
     $("#postMsg").textContent = "";
   }
@@ -464,6 +470,7 @@
     if (!p.title) return fail(kind === "skill" ? "Add your business or name." : "Add a short title.", "#f-title");
     if (kind === "prayer") p.hide_name = $("#f-hide").checked;
     if (kind === "need") Object.assign(p, { category: v("#f-category"), area: v("#f-area"), contact: v("#f-contact") });
+    if (kind === "free") Object.assign(p, { category: v("#f-free-category"), area: v("#f-area"), contact: v("#f-contact") });
     if (kind === "skill") {
       Object.assign(p, { trade: v("#f-trade"), area: v("#f-area"), rate: v("#f-rate"), contact: v("#f-contact") });
       if (!p.trade) return fail("Choose the trade you offer.", "#f-trade");
@@ -498,6 +505,7 @@
       prayer: openRows.filter((r) => r.kind === "prayer").length,
       need: openRows.filter((r) => r.kind === "need").length,
       skill: openRows.filter((r) => r.kind === "skill").length,
+      free: openRows.filter((r) => r.kind === "free").length,
       mine: rows.filter((r) => r.is_mine).length,
       review: rows.filter(needsReview).length,
     };
@@ -515,7 +523,8 @@
       $("#tally").replaceChildren(
         h("b", { text: count.prayer }), ` prayer request${count.prayer === 1 ? "" : "s"} · `,
         h("b", { text: count.need }), ` open need${count.need === 1 ? "" : "s"} · `,
-        h("b", { text: count.skill }), ` trade${count.skill === 1 ? "" : "s"} listed`
+        h("b", { text: count.skill }), ` trade${count.skill === 1 ? "" : "s"} listed · `,
+        h("b", { text: count.free }), ` free item${count.free === 1 ? "" : "s"}`
       );
     }
 
@@ -536,6 +545,7 @@
         prayer: ["No prayer requests yet", "Share what’s on your heart and let others pray with you."],
         need: ["No open needs right now", "Need a meal, a ride or a hand with something? Post it here."],
         skill: ["No trades listed yet", "Electrician, painter, tutor, mechanic? List your work so neighbors can hire you."],
+        free: ["Nothing free right now", "Have a crib, a couch or a box of books you no longer need? Give it to a neighbor here."],
         mine: ["You haven’t posted yet", "Your posts show up here, including ones waiting for review."],
         review: ["Nothing to review", "New posts and reported posts will show up here."],
       };
@@ -655,7 +665,7 @@
       left.push(c, h("button", { class: "btn small quiet", type: "button", onclick: () => copyContact(r.contact, c), text: "Copy" }));
     } else if (!me.signedIn && r.kind !== "prayer") {
       left.push(h("button", { class: "btn small", type: "button", onclick: () => openPanel("signInPanel"), text: "Sign in to see contact details" }));
-    } else if (r.kind === "need") {
+    } else if (r.kind === "need" || r.kind === "free") {
       left.push(h("span", { class: "when", text: "No contact given. Ask a church leader to connect you." }));
     }
 

@@ -7,7 +7,7 @@ window.ONE_ANOTHER_CONFIG = {
   // Shown in the header.
   boardName: "“One Another” Board",
   churchName: "Follow Church",
-  tagline: "Share a prayer request, ask for a hand with something you need, or let neighbors know what trade work you do.",
+  tagline: "Share a prayer request, ask for a hand with something you need, let neighbors know what trade work you do, or give away things you no longer need.",
 
   // Church brand colors.
   brand: {

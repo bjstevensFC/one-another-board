@@ -23,6 +23,7 @@
   --band-muted: color-mix(in srgb, #FFFFFF 72%, var(--brand-secondary));
   --prayer: var(--brand-primary);
   --need: #A85A0B;
+  --free: #2E7D32;
   --skill: #0E7068;
   --danger: #B42318;
   --ok: #0E7A3E;
@@ -46,6 +47,7 @@
     --band: var(--brand-secondary);
     --prayer: var(--brand-primary-dark);
     --need: #F0A85A;
+    --free: #7BD389;
     --skill: #5FD0C3;
     --danger: #FF8A80;
     --ok: #6BD69A;
@@ -158,6 +160,7 @@ header.top .inner { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items:
 .kind-opt[data-kind="prayer"] { --k: var(--prayer); }
 .kind-opt[data-kind="need"] { --k: var(--need); }
 .kind-opt[data-kind="skill"] { --k: var(--skill); }
+.kind-opt[data-kind="free"] { --k: var(--free); }
 .kind-opt b { font-family: var(--font-display); font-size: 17px; }
 .kind-opt span { font-size: 14px; color: var(--muted); }
 .kind-opt[aria-pressed="true"] { border-color: var(--k); background: color-mix(in srgb, var(--k) 9%, transparent); }
@@ -202,6 +205,7 @@ input.field-inline { width: min(240px, 100%); }
 }
 .card[data-kind="prayer"] { --k: var(--prayer); }
 .card[data-kind="need"] { --k: var(--need); }
+.card[data-kind="free"] { --k: var(--free); }
 .card[data-kind="skill"] { --k: var(--skill); }
 .card .main { padding: 16px 18px 14px; display: grid; gap: 8px; min-width: 0; }
 .eyebrow { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
