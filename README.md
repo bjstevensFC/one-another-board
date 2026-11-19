@@ -7,6 +7,7 @@ A public community bulletin board for prayer requests, needs, and trades for hir
 - **New accounts need the church code.** Moderators see and change it at the top of the Review tab. Existing accounts are never asked for it. (Set up by `supabase/updates/2026-11-13-church-code.sql` plus the "Before User Created" hook in Supabase → Authentication → Auth Hooks.)
 - **Moderators approve** every new post before it appears, and see reported posts in a Review tab.
 - Posts **expire after 60 days**. Authors can renew them, mark them answered or met, or remove them.
+- **Testimonies.** When someone marks a prayer answered or a need met, they are invited to share a testimony, with a checkbox to let Follow Church share it publicly (in a service, newsletter or social media post). A moderator approves each testimony on the Review tab before it appears; moderators can see on the card whether sharing is OK. Answered prayers and met needs with an approved testimony stay on the board. (See `supabase/updates/2026-11-19-testimonies.sql`.)
 - Prayer requests can hide the poster's name from other readers. Moderators can still see it.
 
 - **Moderators get an email** when a new post is waiting for review or a post is reported (see `supabase/updates/2026-11-13-review-alerts.sql`; it needs a Resend key saved in Supabase's Vault as `resend_alerts_key`).

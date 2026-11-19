@@ -51,7 +51,12 @@ create table if not exists public.posts (
   created_at  timestamptz not null default now(),
   expires_at  timestamptz not null default now() + interval '60 days',
   reviewed_by uuid references auth.users (id) on delete set null,
-  reviewed_at timestamptz
+  reviewed_at timestamptz,
+  -- Shared when a prayer is answered or a need is met; a moderator approves it first
+  testimony        text check (char_length(testimony) <= 1200),
+  testimony_status text check (testimony_status in ('pending', 'approved', 'declined')),
+  testimony_at     timestamptz,
+  testimony_share  boolean not null default false  -- OK for the church to share it publicly
 );
 create index if not exists posts_status_idx on public.posts (status, expires_at);
 create index if not exists posts_author_idx on public.posts (author_id);
@@ -120,7 +125,13 @@ select
   exists (select 1 from public.prayers x where x.post_id = p.id and x.user_id = auth.uid()) as i_prayed,
   exists (select 1 from public.reports r where r.post_id = p.id and r.user_id = auth.uid()) as i_reported,
   case when public.is_moderator()
-       then (select count(*) from public.reports r where r.post_id = p.id)::int end as report_count
+       then (select count(*) from public.reports r where r.post_id = p.id)::int end as report_count,
+  -- Others see a testimony only once a moderator approves it
+  case when p.testimony_status = 'approved' or p.author_id = auth.uid() or public.is_moderator()
+       then p.testimony end as testimony,
+  case when p.testimony_status = 'approved' or p.author_id = auth.uid() or public.is_moderator()
+       then p.testimony_status end as testimony_status,
+  case when p.author_id = auth.uid() or public.is_moderator() then p.testimony_share end as testimony_share
 from public.posts p
 join public.profiles pr on pr.id = p.author_id
 where (p.status in ('open', 'closed') and p.expires_at > now())
@@ -229,6 +240,42 @@ begin
   end if;
 end $$;
 
+-- Authors add, change or remove (empty text) the testimony on their own answered prayer or met need.
+drop function if exists public.set_testimony(uuid, text);
+create or replace function public.set_testimony(p_id uuid, p_text text, p_share boolean default false)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := public.require_user();
+  p public.posts;
+  t text := public.clean(p_text);
+begin
+  select * into p from public.posts where id = p_id;
+  if not found then raise exception 'That post no longer exists.'; end if;
+  if p.author_id <> uid then raise exception 'You can only add a testimony to your own posts.'; end if;
+  if p.kind not in ('prayer', 'need') or p.status <> 'closed' then
+    raise exception 'You can share a testimony once a prayer is answered or a need is met.';
+  end if;
+  if char_length(t) > 1200 then raise exception 'Please keep your testimony under 1,200 characters.'; end if;
+  update public.posts
+     set testimony = t,
+         testimony_status = case when t is null then null when public.is_moderator() then 'approved' else 'pending' end,
+         testimony_at = case when t is null then null else now() end,
+         testimony_share = t is not null and coalesce(p_share, false)
+   where id = p_id;
+end $$;
+
+-- Moderators approve or decline a testimony.
+create or replace function public.review_testimony(p_id uuid, p_approve boolean)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform public.require_user();
+  if not public.is_moderator() then raise exception 'Moderators only.'; end if;
+  update public.posts
+     set testimony_status = case when p_approve then 'approved' else 'declined' end
+   where id = p_id and testimony is not null;
+  if not found then raise exception 'That testimony no longer exists.'; end if;
+end $$;
+
 create or replace function public.renew_post(p_id uuid)
 returns void language plpgsql security definer set search_path = public as $$
 declare uid uuid := public.require_user();
@@ -285,7 +332,8 @@ grant execute on function
   public.get_me(), public.set_display_name(text),
   public.create_post(text, text, text, text, text, text, text, text, boolean, text),
   public.set_post_status(uuid, text), public.renew_post(uuid), public.delete_post(uuid),
-  public.toggle_prayer(uuid), public.report_post(uuid, text), public.list_reports(uuid)
+  public.toggle_prayer(uuid), public.report_post(uuid, text), public.list_reports(uuid),
+  public.set_testimony(uuid, text, boolean), public.review_testimony(uuid, boolean)
 to authenticated;
 grant execute on function public.get_me() to anon;
 -- The view calls is_moderator(); allow it for both roles.

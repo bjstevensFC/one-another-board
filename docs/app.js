@@ -148,6 +148,8 @@
         p_website: p.website || null,
       }),
       setStatus: (id, status) => rpc("set_post_status", { p_id: id, p_status: status }),
+      setTestimony: (id, text, share) => rpc("set_testimony", { p_id: id, p_text: text || "", p_share: !!share }),
+      reviewTestimony: (id, approve) => rpc("review_testimony", { p_id: id, p_approve: !!approve }),
       renew: (id) => rpc("renew_post", { p_id: id }),
       remove: (id) => rpc("delete_post", { p_id: id }),
       togglePrayer: (id) => rpc("toggle_prayer", { p_id: id }),
@@ -169,7 +171,7 @@
       { ...base, id: "d3", kind: "skill", title: "Sample: Licensed electrician", body: "Panel upgrades, outlets, lighting and troubleshooting. Licensed and insured, 15 years experience.", trade: "Electrical", area: "Within 25 miles", rate: "Free estimates", contact: "electric@example.com", website: "https://www.example.com/", author_name: "Sample tradesperson", status: "open", created_at: iso(2 * DAY), expires_at: iso(-58 * DAY) },
       { ...base, id: "d4", kind: "prayer", title: "Sample: A new job after a layoff", body: "", author_name: null, hide_name: true, status: "open", created_at: iso(4 * DAY), expires_at: iso(-56 * DAY), prayer_count: 6 },
       { ...base, id: "d5", kind: "skill", title: "Sample: Math and reading tutor", body: "Retired teacher. Grades 2–8, in person or online.", trade: "Tutoring", area: "Online or church library", rate: "$25/hr", contact: "555-0177", author_name: "Sample tradesperson", status: "open", created_at: iso(6 * DAY), expires_at: iso(-54 * DAY) },
-      { ...base, id: "d6", kind: "need", title: "Sample: Meals for a family with a new baby", body: "Two dinners a week for the next three weeks would be a huge help.", category: "Meals", area: "Northside", contact: "555-0108", author_name: "Sample member", status: "closed", created_at: iso(12 * DAY), expires_at: iso(-48 * DAY) },
+      { ...base, id: "d6", kind: "need", title: "Sample: Meals for a family with a new baby", body: "Two dinners a week for the next three weeks would be a huge help.", category: "Meals", area: "Northside", contact: "555-0108", author_name: "Sample member", status: "closed", created_at: iso(12 * DAY), expires_at: iso(-48 * DAY), testimony: "Sample: Six families signed up within a day, and we had dinners covered for all three weeks. Thank you for loving us so well!", testimony_status: "approved", testimony_share: true },
       { ...base, id: "d7", kind: "skill", title: "Sample: Lawn care and leaf cleanup", body: "Weekly mowing, fall cleanup, small landscaping jobs.", trade: "Landscaping & lawn", area: "Westside", contact: "555-0190", author_name: "Sample tradesperson", status: "pending", created_at: iso(2 * 3600e3), expires_at: iso(-60 * DAY) },
       { ...base, id: "d9", kind: "free", title: "Sample: Crib and changing table", body: "Solid wood, gently used. You pick up; I can help load.", category: "Porch pickup · Exchange at church", area: "Southside", contact: "555-0123", author_name: "Sample member", status: "open", created_at: iso(8 * 3600e3), expires_at: iso(-59 * DAY) },
       { ...base, id: "d8", kind: "need", title: "Sample: Cash needed fast, message me", body: "Send gift cards and I’ll pay you back double.", category: "Financial help", contact: "scam@example.com", author_name: "Sample account", status: "open", created_at: iso(5 * 3600e3), expires_at: iso(-60 * DAY), report_count: 2 },
@@ -228,6 +230,13 @@
         return delay();
       },
       async setStatus(id, status) { const r = find(id); r.status = status; if (status === "open") r.report_count = 0; return delay(); },
+      async setTestimony(id, text, share) {
+        const r = find(id), t = String(text || "").trim();
+        if (r.status !== "closed") throw new Error("You can share a testimony once a prayer is answered or a need is met.");
+        r.testimony = t || null; r.testimony_share = !!t && !!share; r.testimony_status = !t ? null : me.isModerator ? "approved" : "pending";
+        return delay();
+      },
+      async reviewTestimony(id, approve) { const r = find(id); r.testimony_status = approve ? "approved" : "declined"; return delay(); },
       async renew(id) { const r = find(id); r.expired = false; r.expires_at = new Date(Date.now() + 60 * DAY).toISOString(); return delay(); },
       async remove(id) { rows = rows.filter((r) => r.id !== id); return delay(); },
       async togglePrayer(id) { const r = find(id); r.i_prayed = !r.i_prayed; r.prayer_count += r.i_prayed ? 1 : -1; return delay(r.i_prayed); },
@@ -242,7 +251,7 @@
   if (CFG.supabaseUrl && !window.supabase) showError("The sign-in library didn’t load, so the board is running in demo mode. Check your connection and reload.");
 
   // ---------- State ----------
-  const S = { me: { signedIn: false }, rows: [], loaded: false, tab: "all", q: "", trade: "", showClosed: false, kind: "prayer", reporting: null, reasons: {} };
+  const S = { me: { signedIn: false }, rows: [], loaded: false, tab: "all", q: "", trade: "", showClosed: false, kind: "prayer", reporting: null, testifying: null, reasons: {} };
   try {
     const saved = JSON.parse(localStorage.getItem("oab-view") || "{}");
     if (BOARD_TABS.includes(saved.tab)) S.tab = saved.tab;
@@ -505,7 +514,10 @@
 
   // ---------- Board ----------
   const onBoard = (r) => (r.status === "open" || r.status === "closed") && !r.expired;
-  const needsReview = (r) => r.status === "pending" || (r.report_count > 0 && r.status === "open");
+  const testimonyPending = (r) => r.testimony_status === "pending" && !!r.testimony;
+  const needsReview = (r) => r.status === "pending" || (r.report_count > 0 && r.status === "open") || testimonyPending(r);
+  // Answered prayers and met needs stay on the board once they have an approved testimony.
+  const hasTestimony = (r) => r.status === "closed" && r.testimony_status === "approved" && !!r.testimony;
 
   function render() {
     const me = S.me, rows = S.rows;
@@ -541,8 +553,8 @@
     let list;
     if (S.tab === "review") list = rows.filter(needsReview);
     else if (S.tab === "mine") list = rows.filter((r) => r.is_mine);
-    else list = rows.filter((r) => onBoard(r) && (S.showClosed || r.status === "open") && (S.tab === "all" || r.kind === S.tab) && (S.tab !== "skill" || !S.trade || r.trade === S.trade));
-    if (S.q) list = list.filter((r) => [r.title, r.body, r.trade, r.category, r.area].some((f) => f && f.toLowerCase().includes(S.q)));
+    else list = rows.filter((r) => onBoard(r) && (S.showClosed || r.status === "open" || hasTestimony(r)) && (S.tab === "all" || r.kind === S.tab) && (S.tab !== "skill" || !S.trade || r.trade === S.trade));
+    if (S.q) list = list.filter((r) => [r.title, r.body, r.trade, r.category, r.area, r.testimony].some((f) => f && f.toLowerCase().includes(S.q)));
     const rank = (r) => (r.status === "closed" ? 1 : 0);
     list.sort((a, b) => rank(a) - rank(b) || String(b.created_at).localeCompare(String(a.created_at)));
 
@@ -557,7 +569,7 @@
         skill: ["No trades listed yet", "Electrician, painter, tutor, mechanic? List your work so members of the Follow Church community can hire you."],
         free: ["Nothing free right now", "Have a crib, a couch or a box of books you no longer need? Give it to a member of the Follow Church community here."],
         mine: ["You haven’t posted yet", "Your posts show up here, including ones waiting for review."],
-        review: ["Nothing to review", "New posts and reported posts will show up here."],
+        review: ["Nothing to review", "New posts, testimonies and reported posts will show up here."],
       };
       const [t, p] = (S.q || S.trade) ? ["Nothing matches", "Try a different search or trade."] : msgs[S.tab];
       board.replaceChildren(empty(t, p, S.tab !== "review" && !(S.q || S.trade)));
@@ -657,6 +669,21 @@
       h("div", { class: "byline", text: who })
     );
 
+    // Testimony (shown on answered prayers and met needs; the author and moderators also see it while it waits for review)
+    const canTestify = r.is_mine && closed && (r.kind === "prayer" || r.kind === "need");
+    let testimony = null;
+    if (r.testimony && (closed || reviewing) && (r.testimony_status === "approved" || r.is_mine || me.isModerator)) {
+      const note = r.testimony_status === "pending" ? (reviewing ? "New, waiting for your review" : "Waiting for a moderator to review it")
+        : r.testimony_status === "declined" ? (r.is_mine ? "Not approved. You can edit it and share it again." : "Not approved") : null;
+      testimony = h("div", { class: "testimony" + (r.testimony_status === "approved" ? "" : " unapproved") },
+        h("div", { class: "testimony-label" }, h("span", { text: "Testimony" }), note ? h("span", { class: "when", text: note }) : null),
+        h("p", { text: r.testimony }),
+        (r.is_mine || me.isModerator) && r.testimony_share != null
+          ? h("p", { class: "hint", text: r.testimony_share ? "✓ OK for Follow Church to share publicly" : "Not for sharing beyond this board" })
+          : null
+      );
+    }
+
     // Left side of the tear-off strip
     const left = [];
     if (r.kind === "prayer" && !reviewing) {
@@ -681,12 +708,17 @@
 
     // Actions
     const actions = [];
-    if (reviewing) {
+    if (reviewing && (r.status === "pending" || r.report_count > 0)) {
       actions.push(h("button", { class: "btn small quiet ok", type: "button", onclick: () => act(() => api.setStatus(r.id, "open"), r.status === "pending" ? "Approved." : "Kept on the board."), text: r.status === "pending" ? "Approve" : "Keep" }));
       if (r.status === "pending") actions.push(h("button", { class: "btn small quiet danger", type: "button", onclick: () => act(() => api.setStatus(r.id, "rejected"), "Not approved."), text: "Decline" }));
       actions.push(confirmButton("Remove", "Confirm remove", "danger", () => act(() => api.remove(r.id), "Post removed.")));
+    } else if (reviewing && testimonyPending(r)) {
+      actions.push(h("button", { class: "btn small quiet ok", type: "button", onclick: () => act(() => api.reviewTestimony(r.id, true), "Testimony approved."), text: "Approve testimony" }));
+      actions.push(h("button", { class: "btn small quiet danger", type: "button", onclick: () => act(() => api.reviewTestimony(r.id, false), "Testimony not approved."), text: "Decline testimony" }));
     } else if (r.is_mine) {
-      if (r.status === "open" || r.status === "closed") actions.push(h("button", { class: "btn small quiet", type: "button", onclick: () => act(() => api.setStatus(r.id, closed ? "open" : "closed"), closed ? "Reopened." : K.closed + "."), text: closed ? K.reopen : K.close }));
+      const closing = !closed && (r.kind === "prayer" || r.kind === "need");
+      if (r.status === "open" || r.status === "closed") actions.push(h("button", { class: "btn small quiet", type: "button", onclick: async () => { if (await act(() => api.setStatus(r.id, closed ? "open" : "closed"), closed ? "Reopened." : K.closed + ".") && closing) { S.testifying = r.id; render(); } }, text: closed ? K.reopen : K.close }));
+      if (canTestify && S.testifying !== r.id) actions.push(h("button", { class: "btn small quiet", type: "button", onclick: () => { S.testifying = r.id; render(); }, text: r.testimony ? "Edit testimony" : "Share a testimony" }));
       const daysLeft = (new Date(r.expires_at) - Date.now()) / DAY;
       if (r.status !== "rejected" && (r.expired || daysLeft < 14)) actions.push(h("button", { class: "btn small quiet", type: "button", onclick: () => act(() => api.renew(r.id), "Renewed for 60 days."), text: "Renew" }));
       actions.push(confirmButton("Remove", "Confirm remove", "danger", () => act(() => api.remove(r.id), "Post removed.")));
@@ -709,6 +741,36 @@
       setTimeout(() => input.focus(), 0);
     }
 
+    // Testimony prompt, offered right after a prayer is marked answered or a need is marked met
+    if (S.testifying === r.id && canTestify) {
+      const editing = !!r.testimony;
+      const ask = editing ? "Edit your testimony"
+        : r.kind === "prayer" ? "Praise God! Would you like to share how this prayer was answered?"
+        : "We’re glad this need was met! Would you like to share how it happened?";
+      const input = h("textarea", { id: "testimony-" + r.id, maxlength: "1200", rows: "4", "aria-label": "Your testimony", placeholder: r.kind === "prayer" ? "What happened? How did God answer?" : "Who helped, and what difference did it make?" });
+      input.value = r.testimony || "";
+      const share = h("input", { type: "checkbox", id: "testimony-share-" + r.id });
+      share.checked = !!r.testimony_share;
+      const done = () => { S.testifying = null; render(); };
+      strip.push(h("div", { class: "tear" }, h("div", { class: "testimony-box" },
+        h("label", { for: input.id, class: "testimony-ask", text: ask }),
+        h("p", { class: "hint", text: "Your story can encourage others. It’s optional, and a moderator reviews it before it appears on the board." + (editing ? " Clear the box and save to remove it." : "") }),
+        input,
+        h("label", { class: "check" }, share, " Follow Church may share my testimony publicly, such as in a service, newsletter or social media post."),
+        h("div", { class: "btn-row" },
+          h("button", { class: "btn small primary", type: "button", onclick: async () => {
+            const text = input.value.trim();
+            if (!text && !editing) { input.focus(); return toast("Write a few words first, or choose “Not now.”"); }
+            const msg = !text ? "Testimony removed." : S.me.isModerator ? "Thank you for sharing!" : "Thank you for sharing! A moderator will review it soon.";
+            S.testifying = null;
+            if (!(await act(() => api.setTestimony(r.id, text, share.checked), msg))) { S.testifying = r.id; render(); }
+          }, text: editing ? "Save" : "Share testimony" }),
+          h("button", { class: "btn small quiet", type: "button", onclick: done, text: editing ? "Cancel" : "Not now" })
+        )
+      )));
+      setTimeout(() => { if (document.activeElement !== input) input.focus(); }, 0);
+    }
+
     // Report reasons for moderators
     if (reviewing && r.report_count > 0) {
       const box = h("div", { class: "tear" });
@@ -721,7 +783,7 @@
       strip.push(box);
     }
 
-    return h("article", { class: "card" + (closed ? " closed" : "") + (r.expired ? " expired" : ""), "data-kind": r.kind }, main, ...strip);
+    return h("article", { class: "card" + (closed ? " closed" : "") + (r.expired ? " expired" : ""), "data-kind": r.kind }, main, testimony, ...strip);
   }
 
   // ---------- Boot ----------
@@ -731,5 +793,5 @@
     refresh();
   });
   refresh();
-  setInterval(() => { if (!document.hidden && !S.reporting && !codeState.editing && $("#composer").hidden) refresh(); }, 60000);
+  setInterval(() => { if (!document.hidden && !S.reporting && !S.testifying && !codeState.editing && $("#composer").hidden) refresh(); }, 60000);
 })();

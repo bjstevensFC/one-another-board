@@ -260,6 +260,20 @@ fieldset.check-group legend { font-weight: 700; font-size: 14px; padding: 0; mar
 .report-box { display: grid; gap: 8px; width: 100%; }
 .report-box input { border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper); padding: 6px 10px; font-size: 15px; width: 100%; }
 .reasons { margin: 0; padding-left: 18px; font-size: 14px; color: var(--muted); }
+.testimony {
+  margin: 0 18px 14px; padding: 10px 14px; border-radius: 10px;
+  border-left: 4px solid var(--ok); background: color-mix(in srgb, var(--ok) 9%, var(--surface));
+}
+.testimony.unapproved { border-left-color: var(--need); background: color-mix(in srgb, var(--need) 8%, var(--surface)); }
+.testimony-label { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin-bottom: 4px; }
+.testimony-label > span:first-child { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ok); }
+.testimony.unapproved .testimony-label > span:first-child { color: var(--need); }
+.testimony p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.testimony-box { display: grid; gap: 8px; width: 100%; }
+.testimony-ask { font-weight: 700; font-size: 16px; }
+.testimony-box textarea { border: 1px solid var(--line-strong); border-radius: 10px; background: var(--paper); color: var(--ink); padding: 8px 12px; font: inherit; font-size: 16px; width: 100%; resize: vertical; }
+.testimony-box .check { display: flex; align-items: flex-start; gap: 8px; font-size: 15px; color: var(--ink); }
+.testimony-box .check input { width: 18px; height: 18px; margin: 2px 0 0; flex: none; accent-color: var(--link); }
 .empty {
   grid-column: 1 / -1; border: 2px dashed var(--line-strong); border-radius: 16px; padding: 36px 20px;
   text-align: center; color: var(--muted); display: grid; gap: 10px; justify-items: center;
