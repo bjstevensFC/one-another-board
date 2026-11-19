@@ -474,7 +474,6 @@
     $("#f-title").placeholder = KIND[kind].titlePh;
     $("#l-body").textContent = KIND[kind].bodyLabel;
     $("#f-body").placeholder = KIND[kind].bodyPh || "";
-    $("#l-contact").textContent = kind === "skill" || kind === "free" ? "How to reach you" : "How to reach you (optional)";
     $("#submitBtn").textContent = KIND[kind].submit;
     $("#postMsg").textContent = "";
   }
@@ -508,7 +507,10 @@
     if (!p.title) return fail(kind === "skill" ? "Add your business or name." : "Add a short title.", "#f-title");
     if (!$("#ackPost").checked) return fail("Please read “How this board works” and check the box to agree.", "#ackPost");
     if (kind === "prayer") p.hide_name = $("#f-hide").checked;
-    if (kind === "need") Object.assign(p, { category: v("#f-category"), area: v("#f-area"), contact: v("#f-contact") });
+    if (kind === "need") {
+      if (!v("#f-contact")) return fail("Add a phone number or email so people can reach you about this need.", "#f-contact");
+      Object.assign(p, { category: v("#f-category"), area: v("#f-area"), contact: v("#f-contact") });
+    }
     if (kind === "free") {
       // Pickup options are saved as a short label, e.g. "Porch pickup · Exchange at church".
       const options = [$("#f-porch").checked && "Porch pickup", $("#f-church").checked && "Exchange at church"].filter(Boolean);
