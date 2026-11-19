@@ -232,6 +232,9 @@ input.field-inline { width: min(240px, 100%); }
 .site-link::after { content: "↗"; font-weight: 400; }
 .site-link:hover { text-decoration: underline; }
 .byline { font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
+.card .pickup { margin: 0; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.grid2 .field.wide { grid-column: 1 / -1; }
+.field textarea#f-pickup { min-height: 0; }
 .tear {
   border-top: 1.5px dashed var(--line-strong); padding: 10px 18px 12px;
   display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between;

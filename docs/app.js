@@ -10,9 +10,8 @@
     prayer: { label: "Prayer request", closed: "Answered", close: "Mark answered", reopen: "Reopen", titleLabel: "What can we pray for?", bodyLabel: "Details", titlePh: "e.g. Healing for my mom after surgery", submit: "Share request" },
     need:   { label: "Need", closed: "Met", close: "Mark met", reopen: "Reopen", titleLabel: "What do you need?", bodyLabel: "Details", titlePh: "e.g. Rides to chemo on Tuesdays", submit: "Post need" },
     skill:  { label: "Trade for hire", closed: "Not taking work", close: "Pause listing", reopen: "Resume listing", titleLabel: "Your business or name", bodyLabel: "What you do", titlePh: "e.g. Ruiz Family Electric", submit: "List my trade" },
-    free:   { label: "Freecycle", closed: "Claimed", close: "Mark claimed", reopen: "Available again", titleLabel: "What are you giving away?", bodyLabel: "Details", titlePh: "e.g. Kids’ bike, good condition", submit: "Post item" },
+    free:   { label: "Freecycle", closed: "Claimed", close: "Mark claimed", reopen: "Available again", titleLabel: "Item you want to give away", bodyLabel: "Details", titlePh: "e.g. Kids’ bike", bodyPh: "Size, condition, anything people should know", submit: "Post item" },
   };
-  const FREE_CATEGORIES = ["Furniture","Kids & baby","Clothing & shoes","Kitchen & household","Electronics","Tools & garden","Books & games","Sports & outdoors","Other"];
   const BOARD_TABS = ["all", "prayer", "need", "skill", "free"];
   const DAY = 86400000;
 
@@ -172,7 +171,7 @@
       { ...base, id: "d5", kind: "skill", title: "Sample: Math and reading tutor", body: "Retired teacher. Grades 2–8, in person or online.", trade: "Tutoring", area: "Online or church library", rate: "$25/hr", contact: "555-0177", author_name: "Sample tradesperson", status: "open", created_at: iso(6 * DAY), expires_at: iso(-54 * DAY) },
       { ...base, id: "d6", kind: "need", title: "Sample: Meals for a family with a new baby", body: "Two dinners a week for the next three weeks would be a huge help.", category: "Meals", area: "Northside", contact: "555-0108", author_name: "Sample member", status: "closed", created_at: iso(12 * DAY), expires_at: iso(-48 * DAY) },
       { ...base, id: "d7", kind: "skill", title: "Sample: Lawn care and leaf cleanup", body: "Weekly mowing, fall cleanup, small landscaping jobs.", trade: "Landscaping & lawn", area: "Westside", contact: "555-0190", author_name: "Sample tradesperson", status: "pending", created_at: iso(2 * 3600e3), expires_at: iso(-60 * DAY) },
-      { ...base, id: "d9", kind: "free", title: "Sample: Crib and changing table", body: "Solid wood, gently used. You pick up; I can help load.", category: "Kids & baby", area: "Southside", contact: "555-0123", author_name: "Sample member", status: "open", created_at: iso(8 * 3600e3), expires_at: iso(-59 * DAY) },
+      { ...base, id: "d9", kind: "free", title: "Sample: Crib and changing table", body: "Solid wood, gently used. You pick up; I can help load.", area: "Pick up at church after Sunday service, or text me to set a time.", contact: "555-0123", author_name: "Sample member", status: "open", created_at: iso(8 * 3600e3), expires_at: iso(-59 * DAY) },
       { ...base, id: "d8", kind: "need", title: "Sample: Cash needed fast, message me", body: "Send gift cards and I’ll pay you back double.", category: "Financial help", contact: "scam@example.com", author_name: "Sample account", status: "open", created_at: iso(5 * 3600e3), expires_at: iso(-60 * DAY), report_count: 2 },
     ];
     const reasons = { d8: [{ reason: "Looks like a scam asking for gift cards.", created_at: iso(3600e3) }, { reason: "Not a real need.", created_at: iso(2 * 3600e3) }] };
@@ -275,7 +274,6 @@
 
   $("#f-trade").append(h("option", { value: "", text: "Choose a trade" }), ...TRADES.map((t) => h("option", { value: t, text: t })));
   $("#f-category").append(...CATEGORIES.map((t) => h("option", { value: t, text: t })));
-  $("#f-free-category").append(...FREE_CATEGORIES.map((t) => h("option", { value: t, text: t })));
   $("#tradeFilter").append(h("option", { value: "", text: "All trades" }), ...TRADES.map((t) => h("option", { value: t, text: t })));
   $("#showClosed").checked = S.showClosed;
 
@@ -443,14 +441,20 @@
 
   // ---------- Composer ----------
   function setKind(kind) {
+    // Switching to a different post type starts with a clean form, so nothing
+    // typed for one type carries over into another.
+    if (kind !== S.kind) {
+      $("#postForm").reset();
+      $("#postMsg").classList.remove("bad");
+    }
     S.kind = kind;
     document.querySelectorAll(".kind-opt").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.kind === kind)));
     document.querySelectorAll("#postForm [data-for]").forEach((el) => { el.hidden = !el.dataset.for.split(" ").includes(kind); });
     $("#l-title").textContent = KIND[kind].titleLabel;
     $("#f-title").placeholder = KIND[kind].titlePh;
     $("#l-body").textContent = KIND[kind].bodyLabel;
+    $("#f-body").placeholder = KIND[kind].bodyPh || "";
     $("#l-contact").textContent = kind === "skill" ? "How to reach you" : "How to reach you (optional)";
-    $("#l-area").textContent = kind === "free" ? "Pickup area" : "Area or neighborhood";
     $("#submitBtn").textContent = KIND[kind].submit;
     $("#postMsg").textContent = "";
   }
@@ -470,7 +474,7 @@
     if (!p.title) return fail(kind === "skill" ? "Add your business or name." : "Add a short title.", "#f-title");
     if (kind === "prayer") p.hide_name = $("#f-hide").checked;
     if (kind === "need") Object.assign(p, { category: v("#f-category"), area: v("#f-area"), contact: v("#f-contact") });
-    if (kind === "free") Object.assign(p, { category: v("#f-free-category"), area: v("#f-area"), contact: v("#f-contact") });
+    if (kind === "free") Object.assign(p, { area: v("#f-pickup"), contact: v("#f-contact") });
     if (kind === "skill") {
       Object.assign(p, { trade: v("#f-trade"), area: v("#f-area"), rate: v("#f-rate"), contact: v("#f-contact") });
       if (!p.trade) return fail("Choose the trade you offer.", "#f-trade");
@@ -635,12 +639,13 @@
     else if (r.hide_name && !r.author_name) who = "A member of our community";
     else who = (r.author_name || "A neighbor") + (r.hide_name ? " (name hidden from others)" : "");
 
-    const facts = [r.trade, r.category, r.area, r.rate].filter(Boolean);
+    const facts = (r.kind === "free" ? [r.category] : [r.trade, r.category, r.area, r.rate]).filter(Boolean);
     const main = h("div", { class: "main" },
       h("div", { class: "eyebrow" }, h("span", { class: "kind-label", text: K.label }), stamp),
       h("h3", { text: r.title }),
       r.body ? h("p", { class: "body", text: r.body }) : null,
       facts.length ? h("div", { class: "facts" }, facts.map((f) => h("span", { class: "fact", text: f }))) : null,
+      r.kind === "free" && r.area ? h("p", { class: "pickup" }, h("b", { text: "Pickup: " }), r.area) : null,
       r.kind === "skill" && r.website && /^https?:\/\//i.test(r.website)
         ? h("a", { class: "site-link", href: r.website, target: "_blank", rel: "noopener noreferrer nofollow ugc", text: prettyWebsite(r.website) })
         : null,

@@ -42,7 +42,7 @@ create table if not exists public.posts (
   body        text not null default '' check (char_length(body) <= 1200),
   category    text check (char_length(category) <= 40),
   trade       text check (char_length(trade) <= 40),
-  area        text check (char_length(area) <= 60),
+  area        text check (char_length(area) <= 200),
   rate        text check (char_length(rate) <= 60),
   contact     text check (char_length(contact) <= 80),
   website     text check (website is null or (char_length(website) <= 200 and website ~* '^https?://[^[:space:]]+$')),
