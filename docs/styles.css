@@ -303,3 +303,7 @@ details.guide ul { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 4px;
 .ack-list ul { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; color: var(--ink); }
 .ack .check { display: flex; align-items: flex-start; gap: 8px; font-size: 15px; color: var(--ink); }
 .ack .check input { width: 18px; height: 18px; margin: 2px 0 0; flex: none; accent-color: var(--link); }
+
+/* Tip shown at the top of the Needs form */
+.form-tip { margin: 0; font-size: 15px; line-height: 1.45; border-left: 4px solid var(--need); border-radius: 8px; padding: 10px 14px; background: color-mix(in srgb, var(--need) 9%, var(--surface)); }
+.form-tip[hidden] { display: none; }
